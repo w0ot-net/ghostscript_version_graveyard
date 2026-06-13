@@ -9,6 +9,7 @@ RUN apt-get update && \
         ca-certificates \
         curl \
         libx11-dev \
+        libxext-dev \
         libxt-dev \
         && rm -rf /var/lib/apt/lists/*
 

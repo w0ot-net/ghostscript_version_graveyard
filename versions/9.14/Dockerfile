@@ -5,9 +5,12 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
         build-essential \
         ca-certificates \
         curl \
+        libxext-dev \
         libx11-dev \
         libxt-dev \
         && rm -rf /var/lib/apt/lists/*
@@ -16,6 +19,7 @@ RUN curl -fSL "https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/gho
         -o /tmp/gs.tar.gz && \
     tar xzf /tmp/gs.tar.gz -C /tmp && \
     cd /tmp/ghostpdl-ghostscript-${GS_VERSION}/gs && \
+    autoreconf -fi && \
     ./configure --prefix=/opt/gs && \
     make -j$(nproc) && \
     make install && \

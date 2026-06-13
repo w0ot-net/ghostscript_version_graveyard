@@ -24,11 +24,11 @@ A wrapper script lets you invoke any version by name (auto-builds the image on f
 
 | Version  | Source       | Base Image    |
 |----------|--------------|---------------|
-| 8.63     | Source build | ubuntu:22.04  |
-| 8.64     | Source build | ubuntu:22.04  |
-| 9.01     | Source build | ubuntu:22.04  |
+| 8.63     | Source build | ubuntu:18.04  |
+| 8.64     | Source build | ubuntu:18.04  |
+| 9.01     | Source build | ubuntu:18.04  |
 | 9.14     | Source build | ubuntu:22.04  |
-| 9.18     | apt package  | ubuntu:16.04  |
+| 9.18     | Source build | ubuntu:22.04  |
 | 9.50     | apt package  | ubuntu:20.04  |
 | 9.55.0   | apt package  | ubuntu:22.04  |
 | 10.02.1  | apt package  | ubuntu:24.04  |
