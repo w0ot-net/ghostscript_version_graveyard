@@ -66,25 +66,25 @@ Each Ghostscript version gets its own Docker image. Older versions are compiled 
 
 ## Versions
 
-| Version  | Source       | Base Image         |
-|----------|--------------|---------------------|
-| 8.63     | Source build | ubuntu:18.04        |
-| 8.64     | Source build | ubuntu:18.04        |
-| 9.01     | Source build | ubuntu:18.04        |
-| 9.14     | Source build | ubuntu:22.04        |
-| 9.18     | Source build | ubuntu:22.04        |
-| 9.50     | apt package  | ubuntu:20.04        |
-| 9.52     | zypper pkg   | opensuse/leap:15.5  |
-| 9.53.3   | apt package  | debian:bullseye     |
-| 9.55.0   | apt package  | ubuntu:22.04        |
-| 9.56.1   | dnf package  | fedora:36           |
-| 10.0.0   | apt package  | debian:bookworm     |
-| 10.02.1  | apt package  | ubuntu:24.04        |
-| 10.03.0  | Source build | ubuntu:24.04        |
-| 10.03.1  | dnf package  | fedora:41           |
-| 10.05.0  | apt package  | ubuntu:25.04        |
-| 10.05.1  | apt package  | debian:trixie       |
-| 10.07.1  | Source build | ubuntu:24.04        |
+| Version  | Year | Source       | Base Image         |
+|----------|------|--------------|---------------------|
+| 8.63     | 2008 | Source build | ubuntu:18.04        |
+| 8.64     | 2009 | Source build | ubuntu:18.04        |
+| 9.01     | 2011 | Source build | ubuntu:18.04        |
+| 9.14     | 2014 | Source build | ubuntu:22.04        |
+| 9.18     | 2015 | Source build | ubuntu:22.04        |
+| 9.50     | 2019 | apt package  | ubuntu:20.04        |
+| 9.52     | 2020 | zypper pkg   | opensuse/leap:15.5  |
+| 9.53.3   | 2020 | apt package  | debian:bullseye     |
+| 9.55.0   | 2021 | apt package  | ubuntu:22.04        |
+| 9.56.1   | 2022 | dnf package  | fedora:36           |
+| 10.0.0   | 2022 | apt package  | debian:bookworm     |
+| 10.02.1  | 2023 | apt package  | ubuntu:24.04        |
+| 10.03.0  | 2024 | Source build | ubuntu:24.04        |
+| 10.03.1  | 2024 | dnf package  | fedora:41           |
+| 10.05.0  | 2025 | apt package  | ubuntu:25.04        |
+| 10.05.1  | 2025 | apt package  | debian:trixie       |
+| 10.07.1  | 2026 | Source build | ubuntu:24.04        |
 
 ## Adding a new version
 
