@@ -13,23 +13,21 @@ permissions:
   packages: write
 
 jobs:
-  publish:
+  prepare:
     runs-on: ubuntu-latest
-    env:
-      REGISTRY: ghcr.io
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build, verify, and publish
+      - name: Select versions
+        id: versions
         shell: bash
         env:
           VERSION_INPUT: ${{ inputs.version }}
         run: |
           set -euo pipefail
-
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
 
           if [ "$VERSION_INPUT" = "all" ]; then
             mapfile -t versions < <(find versions -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
@@ -41,51 +39,80 @@ jobs:
             versions=("$VERSION_INPUT")
           fi
 
+          json="["
+          for version in "${versions[@]}"; do
+            json="${json}\"$version\","
+          done
+          json="${json%,}]"
+
+          echo "matrix={\"version\":$json}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    env:
+      REGISTRY: ghcr.io
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build, verify, and publish
+        shell: bash
+        env:
+          VERSION: ${{ matrix.version }}
+        run: |
+          set -euo pipefail
+
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+
           echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$GITHUB_ACTOR" --password-stdin
 
-          for version in "${versions[@]}"; do
-            local_image="gs-$version"
-            remote_image="$REGISTRY/$owner/$local_image:latest"
+          local_image="gs-$VERSION"
+          remote_image="$REGISTRY/$owner/$local_image:latest"
 
-            echo "::group::Build $local_image"
-            docker build \
-              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-              --label "org.opencontainers.image.description=Ghostscript $version container" \
-              -t "$local_image" \
-              "versions/$version"
-            echo "::endgroup::"
+          echo "::group::Build $local_image"
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.description=Ghostscript $VERSION container" \
+            -t "$local_image" \
+            "versions/$VERSION"
+          echo "::endgroup::"
 
-            expected_version="$version"
-            case "$version" in
-              10.0.0)
-                expected_version="10.00.0"
-                ;;
-            esac
+          expected_version="$VERSION"
+          case "$VERSION" in
+            10.0.0)
+              expected_version="10.00.0"
+              ;;
+          esac
 
-            actual_version="$(docker run --rm "$local_image" --version)"
-            if [ "$actual_version" != "$expected_version" ]; then
-              echo "::error::$local_image reported version $actual_version, expected $expected_version"
-              exit 1
-            fi
+          actual_version="$(docker run --rm "$local_image" --version)"
+          if [ "$actual_version" != "$expected_version" ]; then
+            echo "::error::$local_image reported version $actual_version, expected $expected_version"
+            exit 1
+          fi
 
-            platform_arch="$(docker image inspect "$local_image" --format '{{ .Architecture }}')"
-            if [ "$platform_arch" != "amd64" ]; then
-              echo "::error::$local_image platform architecture is $platform_arch, expected amd64"
-              exit 1
-            fi
+          platform_arch="$(docker image inspect "$local_image" --format '{{ .Architecture }}')"
+          if [ "$platform_arch" != "amd64" ]; then
+            echo "::error::$local_image platform architecture is $platform_arch, expected amd64"
+            exit 1
+          fi
 
-            oci_arch="$(docker image inspect "$local_image" --format '{{ index .Config.Labels "org.opencontainers.image.architecture" }}')"
-            if [ "$oci_arch" != "amd64" ]; then
-              echo "::error::$local_image OCI architecture label is $oci_arch, expected amd64"
-              exit 1
-            fi
+          oci_arch="$(docker image inspect "$local_image" --format '{{ index .Config.Labels "org.opencontainers.image.architecture" }}')"
+          if [ "$oci_arch" != "amd64" ]; then
+            echo "::error::$local_image OCI architecture label is $oci_arch, expected amd64"
+            exit 1
+          fi
 
-            gs_cpu_arch="$(docker image inspect "$local_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}')"
-            if [ "$gs_cpu_arch" != "x86_64" ]; then
-              echo "::error::$local_image Ghostscript CPU architecture label is $gs_cpu_arch, expected x86_64"
-              exit 1
-            fi
+          gs_cpu_arch="$(docker image inspect "$local_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}')"
+          if [ "$gs_cpu_arch" != "x86_64" ]; then
+            echo "::error::$local_image Ghostscript CPU architecture label is $gs_cpu_arch, expected x86_64"
+            exit 1
+          fi
 
-            docker tag "$local_image" "$remote_image"
-            docker push "$remote_image"
-          done
+          docker tag "$local_image" "$remote_image"
+          docker push "$remote_image"
