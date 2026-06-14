@@ -74,7 +74,7 @@ Each Ghostscript version gets its own Docker image. Older versions are compiled 
 | 9.01     | 2011 | Source build | ubuntu:18.04        |
 | 9.06     | 2012 | apt package  | debian:jessie       |
 | 9.10     | 2013 | yum package  | fedora:20           |
-| 9.14     | 2014 | Source build | ubuntu:22.04        |
+| 9.14     | 2014 | yum package  | fedora:21           |
 | 9.18     | 2015 | Source build | ubuntu:22.04        |
 | 9.20     | 2016 | Source build | ubuntu:22.04        |
 | 9.22     | 2017 | Source build | ubuntu:22.04        |

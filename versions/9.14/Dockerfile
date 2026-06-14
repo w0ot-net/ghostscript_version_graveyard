@@ -1,31 +1,9 @@
-FROM ubuntu:22.04
+FROM fedora:21
 
-ARG GS_VERSION=9.14
-ARG DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        autoconf \
-        automake \
-        build-essential \
-        ca-certificates \
-        curl \
-        libxext-dev \
-        libx11-dev \
-        libxt-dev \
-        && rm -rf /var/lib/apt/lists/*
-
-RUN curl -fSL "https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${GS_VERSION}.tar.gz" \
-        -o /tmp/gs.tar.gz && \
-    tar xzf /tmp/gs.tar.gz -C /tmp && \
-    cd /tmp/ghostpdl-ghostscript-${GS_VERSION}/gs && \
-    autoreconf -fi && \
-    ./configure --prefix=/opt/gs && \
-    make -j$(nproc) && \
-    make install && \
-    rm -rf /tmp/gs.tar.gz /tmp/ghostpdl-ghostscript-${GS_VERSION}
-
-ENV PATH="/opt/gs/bin:${PATH}"
+RUN sed -i 's|^metalink=|#metalink=|; s|^#baseurl=http://download.fedoraproject.org/pub/fedora/linux|baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux|' /etc/yum.repos.d/fedora.repo && \
+    sed -i 's|^enabled=1|enabled=0|' /etc/yum.repos.d/fedora-updates*.repo && \
+    yum install -y ghostscript && \
+    yum clean all
 
 WORKDIR /work
 ENTRYPOINT ["gs"]
