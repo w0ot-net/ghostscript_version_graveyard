@@ -1,6 +1,6 @@
 FROM fedora:36
 
-RUN dnf install -y --setopt=install_weak_deps=False ghostscript && \
+RUN dnf install -y --setopt=install_weak_deps=False binutils gdb ghostscript && \
     dnf clean all
 
 LABEL org.opencontainers.image.architecture="amd64" \

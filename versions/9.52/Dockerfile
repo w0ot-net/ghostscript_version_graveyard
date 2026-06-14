@@ -1,7 +1,8 @@
 FROM opensuse/leap:15.5
 
-RUN zypper --non-interactive refresh && \
-    zypper --non-interactive install --no-recommends ghostscript && \
+RUN zypper mr --disable repo-update repo-update-non-oss repo-backports-update repo-sle-update || true && \
+    zypper --non-interactive --no-gpg-checks refresh && \
+    zypper --non-interactive --no-gpg-checks install --no-recommends binutils gdb ghostscript && \
     zypper clean --all
 
 LABEL org.opencontainers.image.architecture="amd64" \

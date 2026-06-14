@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ghostscript && \
+    apt-get install -y --no-install-recommends binutils gdb ghostscript && \
     rm -rf /var/lib/apt/lists/*
 
 LABEL org.opencontainers.image.architecture="amd64" \

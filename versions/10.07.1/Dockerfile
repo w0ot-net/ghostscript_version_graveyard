@@ -22,6 +22,10 @@ RUN curl -fSL "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/do
     make install && \
     rm -rf /tmp/gs.tar.gz /tmp/ghostscript-${GS_VERSION}
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gdb && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV PATH="/opt/gs/bin:${PATH}"
 
 LABEL org.opencontainers.image.architecture="amd64" \
