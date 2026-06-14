@@ -10,15 +10,59 @@ Ghostscript behavior varies across versions — rendering quirks, security patch
 - Compare output across versions (regression testing, fuzz testing)
 - Test how a document renders on the same Ghostscript version a particular distro ships
 
+## Getting started
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed and running
+
+### Setup
+
+```bash
+git clone https://github.com/w0ot-net/ghostscript_version_graveyard.git
+cd ghostscript_version_graveyard
+```
+
+### Usage
+
+Use the `gs-run` wrapper to invoke any version. The Docker image is built automatically on first run (source builds may take a few minutes; package-based versions are faster).
+
+```bash
+# Check a version
+./gs-run 9.50 -- --version
+
+# List available versions
+./gs-run
+
+# Convert PostScript to PDF
+./gs-run 9.50 -- -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=out.pdf input.ps
+
+# Render a PDF to PNG
+./gs-run 10.02.1 -- -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -sOutputFile=page-%d.png input.pdf
+
+# Compare output across versions
+for v in 9.50 10.02.1 10.07.1; do
+  ./gs-run $v -- -dBATCH -dNOPAUSE -sDEVICE=png16m -sOutputFile="out-$v.png" input.pdf
+done
+```
+
+Files in your current directory are mounted at `/work` inside the container, so input/output paths are relative to where you run the command.
+
+### Pre-building all images
+
+To build every version up front instead of on first use:
+
+```bash
+for dir in versions/*/; do
+  version=$(basename "$dir")
+  echo "Building gs-$version..."
+  docker build -t "gs-$version" "$dir"
+done
+```
+
 ## How it works
 
 Each Ghostscript version gets its own Docker image. Older versions are compiled from source on a base image with a compatible libc; newer versions use distro packages directly.
-
-A wrapper script lets you invoke any version by name (auto-builds the image on first run):
-
-```
-./gs-run 9.50 -- -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=out.pdf input.ps
-```
 
 ## Versions
 
