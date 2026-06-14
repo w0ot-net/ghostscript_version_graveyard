@@ -19,7 +19,7 @@ jobs:
       matrix: ${{ steps.versions.outputs.matrix }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select versions
         id: versions
@@ -59,7 +59,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build, verify, and publish
         shell: bash
