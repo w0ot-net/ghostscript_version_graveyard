@@ -60,6 +60,22 @@ for dir in versions/*/; do
 done
 ```
 
+### Pulling published images
+
+Images can be published to GitHub Container Registry as `ghcr.io/w0ot-net/gs-<version>:latest`.
+
+```bash
+# Pull a published image
+docker pull ghcr.io/w0ot-net/gs-9.50:latest
+
+# Check a published image
+docker run --rm ghcr.io/w0ot-net/gs-9.50:latest --version
+
+# Run Ghostscript from the current directory
+docker run --rm -v "$(pwd):/work" ghcr.io/w0ot-net/gs-9.50:latest \
+  -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=out.pdf input.ps
+```
+
 ## How it works
 
 Each Ghostscript version gets its own Docker image. Older versions are compiled from source on a base image with a compatible libc; newer versions use distro packages directly.
@@ -75,6 +91,23 @@ Inspect those labels with:
 docker image inspect gs-9.50 \
   --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}'
 ```
+
+### Publishing to GHCR
+
+The `Publish Ghostscript Images` GitHub Actions workflow publishes images to GitHub Container Registry. Run it manually from the Actions tab with either:
+
+- a single version, such as `9.50`
+- `all` to build, verify, and publish every version under `versions/`
+
+For each image, the workflow:
+
+- builds `versions/<version>/Dockerfile`
+- verifies `gs --version`
+- verifies the Docker platform architecture is `amd64`
+- verifies the architecture labels are present
+- pushes `ghcr.io/w0ot-net/gs-<version>:latest`
+
+The workflow uses the repository `GITHUB_TOKEN` with `packages: write`; no personal token or registry secret is required. After the first publish, set the package visibility to public in GitHub Packages if anonymous pulls should work.
 
 ## PostScript integer width
 
