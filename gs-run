@@ -25,4 +25,4 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     docker build -t "$IMAGE" "versions/${VERSION}/"
 fi
 
-docker run --rm -v "$(pwd):/work" "$IMAGE" "$@"
+docker run --rm -i -v "$(pwd):/work" "$IMAGE" "$@"
