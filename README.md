@@ -22,18 +22,25 @@ A wrapper script lets you invoke any version by name (auto-builds the image on f
 
 ## Versions
 
-| Version  | Source       | Base Image    |
-|----------|--------------|---------------|
-| 8.63     | Source build | ubuntu:18.04  |
-| 8.64     | Source build | ubuntu:18.04  |
-| 9.01     | Source build | ubuntu:18.04  |
-| 9.14     | Source build | ubuntu:22.04  |
-| 9.18     | Source build | ubuntu:22.04  |
-| 9.50     | apt package  | ubuntu:20.04  |
-| 9.55.0   | apt package  | ubuntu:22.04  |
-| 10.02.1  | apt package  | ubuntu:24.04  |
-| 10.03.0  | Source build | ubuntu:24.04  |
-| 10.07.1  | Source build | ubuntu:24.04  |
+| Version  | Source       | Base Image         |
+|----------|--------------|---------------------|
+| 8.63     | Source build | ubuntu:18.04        |
+| 8.64     | Source build | ubuntu:18.04        |
+| 9.01     | Source build | ubuntu:18.04        |
+| 9.14     | Source build | ubuntu:22.04        |
+| 9.18     | Source build | ubuntu:22.04        |
+| 9.50     | apt package  | ubuntu:20.04        |
+| 9.52     | zypper pkg   | opensuse/leap:15.5  |
+| 9.53.3   | apt package  | debian:bullseye     |
+| 9.55.0   | apt package  | ubuntu:22.04        |
+| 9.56.1   | dnf package  | fedora:36           |
+| 10.0.0   | apt package  | debian:bookworm     |
+| 10.02.1  | apt package  | ubuntu:24.04        |
+| 10.03.0  | Source build | ubuntu:24.04        |
+| 10.03.1  | dnf package  | fedora:41           |
+| 10.05.0  | apt package  | ubuntu:25.04        |
+| 10.05.1  | apt package  | debian:trixie       |
+| 10.07.1  | Source build | ubuntu:24.04        |
 
 ## Adding a new version
 
