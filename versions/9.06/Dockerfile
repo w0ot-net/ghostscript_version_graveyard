@@ -5,5 +5,8 @@ RUN echo "deb http://archive.debian.org/debian jessie main" > /etc/apt/sources.l
     apt-get install -y --force-yes --no-install-recommends ghostscript && \
     rm -rf /var/lib/apt/lists/*
 
+LABEL org.opencontainers.image.architecture="amd64" \
+      net.w0ot.ghostscript.cpu-architecture="x86_64"
+
 WORKDIR /work
 ENTRYPOINT ["gs"]

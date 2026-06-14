@@ -64,6 +64,18 @@ done
 
 Each Ghostscript version gets its own Docker image. Older versions are compiled from source on a base image with a compatible libc; newer versions use distro packages directly.
 
+Images keep the canonical `gs-<version>` tag. Each Dockerfile also labels the image with the architecture of the hosted `gs` executable:
+
+- `org.opencontainers.image.architecture=amd64`
+- `net.w0ot.ghostscript.cpu-architecture=x86_64`
+
+Inspect those labels with:
+
+```bash
+docker image inspect gs-9.50 \
+  --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}'
+```
+
 ## PostScript integer width
 
 Ghostscript versions before 9.07 store PostScript integer objects as 32-bit C `int` values. In those builds, integer arithmetic that exceeds the 32-bit range is promoted to `realtype`; for example, `2147483647 1 add` produces a real value instead of an integer.

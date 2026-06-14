@@ -5,5 +5,8 @@ RUN sed -i 's|^metalink=|#metalink=|; s|^#baseurl=http://download.fedoraproject.
     dnf install -y --setopt=install_weak_deps=False ghostscript && \
     dnf clean all
 
+LABEL org.opencontainers.image.architecture="amd64" \
+      net.w0ot.ghostscript.cpu-architecture="x86_64"
+
 WORKDIR /work
 ENTRYPOINT ["gs"]

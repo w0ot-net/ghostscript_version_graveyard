@@ -28,5 +28,8 @@ RUN curl -fSL "https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/gho
 
 ENV PATH="/opt/gs/bin:${PATH}"
 
+LABEL org.opencontainers.image.architecture="amd64" \
+      net.w0ot.ghostscript.cpu-architecture="x86_64"
+
 WORKDIR /work
 ENTRYPOINT ["gs"]
