@@ -72,6 +72,7 @@ Each Ghostscript version gets its own Docker image. Older versions are compiled 
 | 8.64     | 2009 | Source build | ubuntu:18.04        |
 | 8.71     | 2010 | Source build | ubuntu:18.04        |
 | 9.01     | 2011 | Source build | ubuntu:18.04        |
+| 9.06     | 2012 | Source build | ubuntu:18.04        |
 | 9.14     | 2014 | Source build | ubuntu:22.04        |
 | 9.18     | 2015 | Source build | ubuntu:22.04        |
 | 9.50     | 2019 | apt package  | ubuntu:20.04        |
