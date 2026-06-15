@@ -14,6 +14,7 @@ source_dir=""
 bootstrap=""
 base_image=""
 patch_time_h="false"
+build_jobs="\$(nproc)"
 
 release_tag="gs${version//./}"
 
@@ -24,6 +25,7 @@ case "$version" in
         source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
         bootstrap="autogen"
         patch_time_h="true"
+        build_jobs="1"
         ;;
     8.64|8.71|9.01)
         base_image="ubuntu:18.04"
@@ -31,6 +33,7 @@ case "$version" in
         source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
         bootstrap="autogen"
         patch_time_h="true"
+        build_jobs="1"
         ;;
     9.06|9.10|9.14)
         base_image="ubuntu:18.04"
@@ -38,6 +41,7 @@ case "$version" in
         source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
         bootstrap="autogen"
         patch_time_h="true"
+        build_jobs="1"
         ;;
     9.18|9.20|9.22|9.26)
         base_image="ubuntu:18.04"
@@ -90,7 +94,7 @@ RUN curl -fSL "${source_url}" -o /tmp/gs.tar.gz && \\
     export CFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
     export CXXFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
     if [ "${bootstrap}" = "autogen" ]; then ./autogen.sh --prefix=/opt/gs; else ./configure --prefix=/opt/gs; fi && \\
-    make -j\$(nproc) && \\
+    make -j${build_jobs} && \\
     make install && \\
     rm -rf /tmp/gs.tar.gz /tmp/ghostpdl-ghostscript-${version} /tmp/ghostscript-${version}
 

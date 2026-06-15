@@ -22,7 +22,7 @@ RUN curl -fSL "https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/gho
     sed -i '/^struct timeval {$/,/^};$/d' base/time_.h && \
     cp /usr/share/automake-*/config.guess /usr/share/automake-*/config.sub . && \
     ./autogen.sh --prefix=/opt/gs && \
-    make -j$(nproc) && \
+    make -j1 && \
     make install && \
     rm -rf /tmp/gs.tar.gz /tmp/ghostpdl-ghostscript-${GS_VERSION}
 
