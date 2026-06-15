@@ -2,12 +2,23 @@
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
-    echo "Usage: gs-run <version> [-- <gs args>]"
+    echo "Usage: gs-run [--debug] <version> [-- <gs args>]"
     echo ""
     echo "Available versions:"
     for d in versions/*/; do
         basename "$d"
     done
+    exit 1
+fi
+
+DEBUG=0
+if [ "${1:-}" = "--debug" ]; then
+    DEBUG=1
+    shift
+fi
+
+if [ $# -lt 1 ]; then
+    echo "Usage: gs-run [--debug] <version> [-- <gs args>]" >&2
     exit 1
 fi
 
@@ -18,11 +29,19 @@ if [ "${1:-}" = "--" ]; then
     shift
 fi
 
-IMAGE="gs-${VERSION}"
+if [ "$DEBUG" -eq 1 ]; then
+    IMAGE="gs-${VERSION}:debug"
+else
+    IMAGE="gs-${VERSION}"
+fi
 
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     echo "Image $IMAGE not found. Building..."
-    docker build -t "$IMAGE" "versions/${VERSION}/"
+    if [ "$DEBUG" -eq 1 ]; then
+        scripts/build-debug-image "$VERSION" "$IMAGE"
+    else
+        docker build -t "$IMAGE" "versions/${VERSION}/"
+    fi
 fi
 
 docker run --rm -i -v "$(pwd):/work" "$IMAGE" "$@"

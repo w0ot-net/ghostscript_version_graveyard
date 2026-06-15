@@ -31,6 +31,9 @@ Use the `gs-run` wrapper to invoke any version. The Docker image is built automa
 # Check a version
 ./gs-run 9.50 -- --version
 
+# Check a companion debug build
+./gs-run --debug 9.50 -- --version
+
 # List available versions
 ./gs-run
 
@@ -63,10 +66,15 @@ done
 ### Pulling published images
 
 Images can be published to GitHub Container Registry as `ghcr.io/w0ot-net/gs-<version>:latest`.
+Companion debug builds are published as `ghcr.io/w0ot-net/gs-<version>:debug`.
+The `latest` tag remains the normal runtime build; debug builds are additional source builds with compiler debug information.
 
 ```bash
 # Pull a published image
 docker pull ghcr.io/w0ot-net/gs-9.50:latest
+
+# Pull the companion debug image
+docker pull ghcr.io/w0ot-net/gs-9.50:debug
 
 # Check a published image
 docker run --rm ghcr.io/w0ot-net/gs-9.50:latest --version
@@ -92,6 +100,24 @@ docker image inspect gs-9.50 \
   --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}'
 ```
 
+### Debug Builds
+
+Debug images are companions to the normal images. They do not replace the default `gs-<version>:latest` images.
+
+Locally, build or run a debug companion with:
+
+```bash
+scripts/build-debug-image 9.50
+./gs-run --debug 9.50 -- --version
+```
+
+Debug companions are tagged as `gs-<version>:debug` and are built from public upstream Ghostscript source tarballs with `-g3 -O0 -fno-omit-frame-pointer`. They include `gdb`, `binutils`, and an unstripped `gs` executable with a `.debug_info` section.
+
+Debug images add these labels:
+
+- `net.w0ot.ghostscript.build-flavor=debug`
+- `net.w0ot.ghostscript.debug-symbols=true`
+
 ### Publishing to GHCR
 
 The `Publish Ghostscript Images` GitHub Actions workflow publishes images to GitHub Container Registry. Run it manually from the Actions tab with either:
@@ -106,6 +132,10 @@ For each image, the workflow:
 - verifies the Docker platform architecture is `amd64`
 - verifies the architecture labels are present
 - pushes `ghcr.io/w0ot-net/gs-<version>:latest`
+- builds the companion debug image from source
+- verifies the debug image has the same `gs --version`
+- verifies the debug image has a `.debug_info` section
+- pushes `ghcr.io/w0ot-net/gs-<version>:debug`
 
 The workflow uses the repository `GITHUB_TOKEN` with `packages: write`; no personal token or registry secret is required. After the first publish, set the package visibility to public in GitHub Packages if anonymous pulls should work.
 

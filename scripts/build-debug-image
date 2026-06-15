@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "Usage: scripts/build-debug-image <version> [image-tag]" >&2
+    exit 1
+fi
+
+version="$1"
+image="${2:-gs-${version}:debug}"
+
+source_url=""
+source_dir=""
+bootstrap=""
+base_image=""
+patch_time_h="false"
+
+release_tag="gs${version//./}"
+
+case "$version" in
+    8.63)
+        base_image="ubuntu:18.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
+        bootstrap="autogen"
+        patch_time_h="true"
+        ;;
+    8.64|8.71|9.01)
+        base_image="ubuntu:18.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
+        bootstrap="autogen"
+        patch_time_h="true"
+        ;;
+    9.06|9.10|9.14)
+        base_image="ubuntu:18.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
+        bootstrap="autogen"
+        patch_time_h="true"
+        ;;
+    9.18|9.20|9.22|9.26)
+        base_image="ubuntu:18.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostscript-${version}"
+        bootstrap="configure"
+        ;;
+    9.50|9.52|9.53.3|9.55.0|9.56.1|10.0.0|10.02.1|10.03.0|10.03.1|10.05.0|10.05.1|10.07.1)
+        base_image="ubuntu:24.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostscript-${version}"
+        bootstrap="configure"
+        ;;
+    *)
+        echo "Unknown Ghostscript version for debug build: $version" >&2
+        exit 1
+        ;;
+esac
+
+dockerfile="$(mktemp)"
+build_context="$(mktemp -d)"
+trap 'rm -f "$dockerfile"; rm -rf "$build_context"' EXIT
+
+cat > "$dockerfile" <<EOF
+FROM ${base_image}
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG GS_VERSION=${version}
+
+RUN apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+        autoconf \\
+        automake \\
+        binutils \\
+        build-essential \\
+        ca-certificates \\
+        curl \\
+        file \\
+        gdb \\
+        libx11-dev \\
+        libxext-dev \\
+        libxt-dev \\
+        && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fSL "${source_url}" -o /tmp/gs.tar.gz && \\
+    tar xzf /tmp/gs.tar.gz -C /tmp && \\
+    cd "${source_dir}" && \\
+    if [ "${patch_time_h}" = "true" ]; then find . -name time_.h -exec sed -i '/^struct timeval {$/,/^};$/d' {} +; fi && \\
+    if [ "${bootstrap}" = "autogen" ]; then cp /usr/share/automake-*/config.guess /usr/share/automake-*/config.sub . 2>/dev/null || true; fi && \\
+    export CFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
+    export CXXFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
+    if [ "${bootstrap}" = "autogen" ]; then ./autogen.sh --prefix=/opt/gs; else ./configure --prefix=/opt/gs; fi && \\
+    make -j\$(nproc) && \\
+    make install && \\
+    rm -rf /tmp/gs.tar.gz /tmp/ghostpdl-ghostscript-${version} /tmp/ghostscript-${version}
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+LABEL org.opencontainers.image.architecture="amd64" \\
+      net.w0ot.ghostscript.cpu-architecture="x86_64" \\
+      net.w0ot.ghostscript.build-flavor="debug" \\
+      net.w0ot.ghostscript.debug-symbols="true"
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+
+docker build -f "$dockerfile" -t "$image" "$build_context"
