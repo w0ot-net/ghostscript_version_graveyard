@@ -34,6 +34,10 @@ Use the `gs-run` wrapper to invoke any version. The Docker image is built automa
 # Check a companion debug build
 ./gs-run --debug 9.50 -- --version
 
+# Check the combined image's normal and debug binaries
+./gs-run --combined 9.50 -- --version
+./gs-run --combined-debug 9.50 -- --version
+
 # List available versions
 ./gs-run
 
@@ -67,7 +71,8 @@ done
 
 Images can be published to GitHub Container Registry as `ghcr.io/w0ot-net/gs-<version>:latest`.
 Companion debug builds are published as `ghcr.io/w0ot-net/gs-<version>:debug`.
-The `latest` tag remains the normal runtime build; debug builds are additional source builds with compiler debug information.
+Combined builds are published as `ghcr.io/w0ot-net/gs-<version>:combined`.
+The `latest` tag remains the normal runtime build; debug and combined builds are additional tags.
 
 ```bash
 # Pull a published image
@@ -75,6 +80,9 @@ docker pull ghcr.io/w0ot-net/gs-9.50:latest
 
 # Pull the companion debug image
 docker pull ghcr.io/w0ot-net/gs-9.50:debug
+
+# Pull the combined image with both gs and gs-debug
+docker pull ghcr.io/w0ot-net/gs-9.50:combined
 
 # Check a published image
 docker run --rm ghcr.io/w0ot-net/gs-9.50:latest --version
@@ -118,6 +126,29 @@ Debug images add these labels:
 - `net.w0ot.ghostscript.build-flavor=debug`
 - `net.w0ot.ghostscript.debug-symbols=true`
 
+### Combined Builds
+
+Combined images are a third image set. They do not replace either the normal `latest` images or the companion `debug` images.
+
+Locally, build or run a combined image with:
+
+```bash
+scripts/build-combined-image 9.50
+./gs-run --combined 9.50 -- --version
+./gs-run --combined-debug 9.50 -- --version
+```
+
+Combined images are tagged as `gs-<version>:combined` and contain:
+
+- `gs`: the normal binary from `versions/<version>/Dockerfile`, preserving distro package builds whenever that Dockerfile uses one
+- `gs-debug`: a source-built debug binary installed at `/usr/local/bin/gs-debug` with `-g3 -O0 -fno-omit-frame-pointer`
+
+The combined build scripts default to at most two parallel compiler jobs, and the legacy autoconf builds default to one. Set `GS_BUILD_JOBS` to override that locally.
+
+Combined images add this label:
+
+- `net.w0ot.ghostscript.build-flavor=combined`
+
 ### Publishing to GHCR
 
 The `Publish Ghostscript Images` GitHub Actions workflow publishes images to GitHub Container Registry. Run it manually from the Actions tab with either:
@@ -136,6 +167,10 @@ For each image, the workflow:
 - verifies the debug image has the same `gs --version`
 - verifies the debug image has a `.debug_info` section
 - pushes `ghcr.io/w0ot-net/gs-<version>:debug`
+- builds the combined image with both `gs` and `gs-debug`
+- verifies both commands report the expected version
+- verifies `gs-debug` has a `.debug_info` section
+- pushes `ghcr.io/w0ot-net/gs-<version>:combined`
 
 The workflow uses the repository `GITHUB_TOKEN` with `packages: write`; no personal token or registry secret is required. After the first publish, set the package visibility to public in GitHub Packages if anonymous pulls should work.
 

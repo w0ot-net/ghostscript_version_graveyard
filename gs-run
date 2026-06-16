@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
-    echo "Usage: gs-run [--debug] <version> [-- <gs args>]"
+    echo "Usage: gs-run [--debug|--combined|--combined-debug] <version> [-- <gs args>]"
     echo ""
     echo "Available versions:"
     for d in versions/*/; do
@@ -11,14 +11,24 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-DEBUG=0
-if [ "${1:-}" = "--debug" ]; then
-    DEBUG=1
-    shift
-fi
+MODE="normal"
+case "${1:-}" in
+    --debug)
+        MODE="debug"
+        shift
+        ;;
+    --combined)
+        MODE="combined"
+        shift
+        ;;
+    --combined-debug)
+        MODE="combined-debug"
+        shift
+        ;;
+esac
 
 if [ $# -lt 1 ]; then
-    echo "Usage: gs-run [--debug] <version> [-- <gs args>]" >&2
+    echo "Usage: gs-run [--debug|--combined|--combined-debug] <version> [-- <gs args>]" >&2
     exit 1
 fi
 
@@ -29,19 +39,32 @@ if [ "${1:-}" = "--" ]; then
     shift
 fi
 
-if [ "$DEBUG" -eq 1 ]; then
-    IMAGE="gs-${VERSION}:debug"
-else
-    IMAGE="gs-${VERSION}"
-fi
+ENTRYPOINT_ARGS=()
+case "$MODE" in
+    normal)
+        IMAGE="gs-${VERSION}"
+        ;;
+    debug)
+        IMAGE="gs-${VERSION}:debug"
+        ;;
+    combined)
+        IMAGE="gs-${VERSION}:combined"
+        ;;
+    combined-debug)
+        IMAGE="gs-${VERSION}:combined"
+        ENTRYPOINT_ARGS=(--entrypoint gs-debug)
+        ;;
+esac
 
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     echo "Image $IMAGE not found. Building..."
-    if [ "$DEBUG" -eq 1 ]; then
+    if [ "$MODE" = "debug" ]; then
         scripts/build-debug-image "$VERSION" "$IMAGE"
+    elif [ "$MODE" = "combined" ] || [ "$MODE" = "combined-debug" ]; then
+        scripts/build-combined-image "$VERSION" "$IMAGE"
     else
         docker build -t "$IMAGE" "versions/${VERSION}/"
     fi
 fi
 
-docker run --rm -i -v "$(pwd):/work" "$IMAGE" "$@"
+docker run --rm -i -v "$(pwd):/work" "${ENTRYPOINT_ARGS[@]}" "$IMAGE" "$@"

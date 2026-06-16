@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     env:
       REGISTRY: ghcr.io
@@ -76,6 +76,8 @@ jobs:
           remote_image="$REGISTRY/$owner/$local_image:latest"
           debug_image="$local_image:debug"
           remote_debug_image="$REGISTRY/$owner/$local_image:debug"
+          combined_image="$local_image:combined"
+          remote_combined_image="$REGISTRY/$owner/$local_image:combined"
 
           echo "::group::Build $local_image"
           docker build \
@@ -155,7 +157,54 @@ jobs:
             exit 1
           fi
 
+          echo "::group::Build $combined_image"
+          scripts/build-combined-image "$VERSION" "$combined_image"
+          echo "::endgroup::"
+
+          combined_actual_version="$(docker run --rm "$combined_image" --version)"
+          if [ "$combined_actual_version" != "$expected_version" ]; then
+            echo "::error::$combined_image gs reported version $combined_actual_version, expected $expected_version"
+            exit 1
+          fi
+
+          combined_debug_actual_version="$(docker run --rm --entrypoint gs-debug "$combined_image" --version)"
+          if [ "$combined_debug_actual_version" != "$expected_version" ]; then
+            echo "::error::$combined_image gs-debug reported version $combined_debug_actual_version, expected $expected_version"
+            exit 1
+          fi
+
+          combined_platform_arch="$(docker image inspect "$combined_image" --format '{{ .Architecture }}')"
+          if [ "$combined_platform_arch" != "amd64" ]; then
+            echo "::error::$combined_image platform architecture is $combined_platform_arch, expected amd64"
+            exit 1
+          fi
+
+          combined_oci_arch="$(docker image inspect "$combined_image" --format '{{ index .Config.Labels "org.opencontainers.image.architecture" }}')"
+          if [ "$combined_oci_arch" != "amd64" ]; then
+            echo "::error::$combined_image OCI architecture label is $combined_oci_arch, expected amd64"
+            exit 1
+          fi
+
+          combined_gs_cpu_arch="$(docker image inspect "$combined_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}')"
+          if [ "$combined_gs_cpu_arch" != "x86_64" ]; then
+            echo "::error::$combined_image Ghostscript CPU architecture label is $combined_gs_cpu_arch, expected x86_64"
+            exit 1
+          fi
+
+          combined_flavor="$(docker image inspect "$combined_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.build-flavor" }}')"
+          if [ "$combined_flavor" != "combined" ]; then
+            echo "::error::$combined_image build flavor label is $combined_flavor, expected combined"
+            exit 1
+          fi
+
+          if ! docker run --rm --entrypoint sh "$combined_image" -c 'readelf -S "$(command -v gs-debug)" | grep -q "\.debug_info"'; then
+            echo "::error::$combined_image does not contain a .debug_info section in the gs-debug executable"
+            exit 1
+          fi
+
           docker tag "$local_image" "$remote_image"
           docker tag "$debug_image" "$remote_debug_image"
+          docker tag "$combined_image" "$remote_combined_image"
           docker push "$remote_image"
           docker push "$remote_debug_image"
+          docker push "$remote_combined_image"

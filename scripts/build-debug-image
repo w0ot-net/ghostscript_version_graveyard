@@ -14,7 +14,7 @@ source_dir=""
 bootstrap=""
 base_image=""
 patch_time_h="false"
-build_jobs="\$(nproc)"
+build_jobs="${GS_BUILD_JOBS:-2}"
 
 release_tag="gs${version//./}"
 
