@@ -72,6 +72,23 @@ jobs:
 
           echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$GITHUB_ACTOR" --password-stdin
 
+          push_with_retry() {
+            local image="$1"
+            local attempt
+
+            for attempt in 1 2 3; do
+              if docker push "$image"; then
+                return 0
+              fi
+
+              if [ "$attempt" -eq 3 ]; then
+                return 1
+              fi
+
+              sleep $((attempt * 10))
+            done
+          }
+
           local_image="gs-$VERSION"
           remote_image="$REGISTRY/$owner/$local_image:latest"
           debug_image="$local_image:debug"
@@ -205,6 +222,6 @@ jobs:
           docker tag "$local_image" "$remote_image"
           docker tag "$debug_image" "$remote_debug_image"
           docker tag "$combined_image" "$remote_combined_image"
-          docker push "$remote_image"
-          docker push "$remote_debug_image"
-          docker push "$remote_combined_image"
+          push_with_retry "$remote_image"
+          push_with_retry "$remote_debug_image"
+          push_with_retry "$remote_combined_image"
