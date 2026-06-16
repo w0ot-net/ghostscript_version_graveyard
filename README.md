@@ -94,7 +94,7 @@ docker run --rm -v "$(pwd):/work" ghcr.io/w0ot-net/gs-9.50:latest \
 
 ## How it works
 
-Each Ghostscript version gets its own Docker image. Older versions are compiled from source on a base image with a compatible libc; newer versions use distro packages directly.
+Each Ghostscript version gets its own Docker image. Some versions are compiled from public upstream source tarballs on a compatible base image; others use distro packages directly.
 
 Images keep the canonical `gs-<version>` tag. Each Dockerfile also labels the image with the architecture of the hosted `gs` executable:
 
@@ -178,16 +178,20 @@ The workflow uses the repository `GITHUB_TOKEN` with `packages: write`; no perso
 
 ## PostScript integer width
 
-Ghostscript versions before 9.07 store PostScript integer objects as 32-bit C `int` values. In those builds, integer arithmetic that exceeds the 32-bit range is promoted to `realtype`; for example, `2147483647 1 add` produces a real value instead of an integer.
+The PostScript integer width column describes the behavior of the Docker images in this repository, not just the upstream Ghostscript release number. The local builds are not monotonic by version:
 
-Ghostscript 9.07 introduced 64-bit PostScript integer objects by default. The versions in this repository therefore split as follows: 8.63 through 9.06 are 32-bit-only for PostScript integers, and 9.10 and later support 64-bit PostScript integers. This repository does not currently include 9.07, 9.08, or 9.09.
+- 8.63 and 8.64 support 64-bit PostScript integer objects in these source-built images.
+- 8.71, 9.01, and 9.06 are 32-bit-only for PostScript integers in these images; values outside the 32-bit signed range are represented as `realtype`.
+- 9.10 and later support 64-bit PostScript integer objects.
+
+The repository does not currently include 9.07, 9.08, or 9.09.
 
 ## Versions
 
 | Version  | Year | Source       | Base Image         | 64-bit PS integers | `gs` CPU arch |
 |----------|------|--------------|--------------------|--------------------|---------------|
-| 8.63     | 2008 | Source build | ubuntu:18.04       | No                 | x86_64        |
-| 8.64     | 2009 | Source build | ubuntu:18.04       | No                 | x86_64        |
+| 8.63     | 2008 | Source build | ubuntu:18.04       | Yes                | x86_64        |
+| 8.64     | 2009 | Source build | ubuntu:18.04       | Yes                | x86_64        |
 | 8.71     | 2010 | Source build | ubuntu:18.04       | No                 | x86_64        |
 | 9.01     | 2011 | Source build | ubuntu:18.04       | No                 | x86_64        |
 | 9.06     | 2012 | apt package  | debian:jessie      | No                 | x86_64        |
@@ -215,4 +219,4 @@ Ghostscript 9.07 introduced 64-bit PostScript integer objects by default. The ve
 1. Create a Dockerfile under `versions/<version>/Dockerfile`
 2. Add the entry to the table above
 3. Build: `docker build -t gs-<version> versions/<version>/`
-4. Run: `docker run --rm -v $(pwd):/work gs-<version> gs <args>`
+4. Run: `docker run --rm -v "$(pwd):/work" gs-<version> <gs args>`
