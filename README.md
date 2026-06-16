@@ -143,6 +143,8 @@ Combined images are tagged as `gs-<version>:combined` and contain:
 - `gs`: the normal binary from `versions/<version>/Dockerfile`, preserving distro package builds whenever that Dockerfile uses one
 - `gs-debug`: a source-built debug binary installed at `/usr/local/bin/gs-debug` with `-g3 -O0 -fno-omit-frame-pointer`
 
+The combined image is assembled from the normal and debug companion images, so `gs-debug` is the same debug build published as `gs-<version>:debug`.
+
 The combined build scripts default to at most two parallel compiler jobs, and the legacy autoconf builds default to one. Set `GS_BUILD_JOBS` to override that locally.
 
 Combined images add this label:

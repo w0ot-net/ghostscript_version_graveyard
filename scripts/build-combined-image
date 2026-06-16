@@ -9,102 +9,19 @@ fi
 version="$1"
 image="${2:-gs-${version}:combined}"
 normal_image="gs-${version}"
+debug_image="gs-${version}:debug"
 
 if [ ! -f "versions/${version}/Dockerfile" ]; then
     echo "Unknown Ghostscript version: ${version}" >&2
     exit 1
 fi
 
-source_url=""
-source_dir=""
-bootstrap=""
-patch_time_h="false"
-install_build_deps=""
-install_runtime_deps=""
-build_jobs="${GS_BUILD_JOBS:-2}"
-
-release_tag="gs${version//./}"
-
-case "$version" in
-    8.63)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
-        bootstrap="autogen"
-        patch_time_h="true"
-        install_build_deps='apt-get update && apt-get install -y --no-install-recommends autoconf automake build-essential ca-certificates libx11-dev libxext-dev libxt-dev && rm -rf /var/lib/apt/lists/*'
-        install_runtime_deps='apt-get update && apt-get install -y --no-install-recommends libx11-6 libxext6 libxt6 && rm -rf /var/lib/apt/lists/*'
-        build_jobs="${GS_BUILD_JOBS:-1}"
-        ;;
-    8.64|8.71|9.01)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
-        bootstrap="autogen"
-        patch_time_h="true"
-        install_build_deps='apt-get update && apt-get install -y --no-install-recommends autoconf automake build-essential ca-certificates libx11-dev libxext-dev libxt-dev && rm -rf /var/lib/apt/lists/*'
-        install_runtime_deps='apt-get update && apt-get install -y --no-install-recommends libx11-6 libxext6 libxt6 && rm -rf /var/lib/apt/lists/*'
-        build_jobs="${GS_BUILD_JOBS:-1}"
-        ;;
-    9.06)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
-        bootstrap="autogen"
-        patch_time_h="true"
-        install_build_deps='apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --force-yes --no-install-recommends autoconf automake build-essential ca-certificates libx11-dev libxext-dev libxt-dev && rm -rf /var/lib/apt/lists/*'
-        install_runtime_deps='apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --force-yes --no-install-recommends libx11-6 libxext6 libxt6 && rm -rf /var/lib/apt/lists/*'
-        build_jobs="${GS_BUILD_JOBS:-1}"
-        ;;
-    9.10|9.14)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
-        bootstrap="autogen"
-        patch_time_h="true"
-        install_build_deps='yum install -y autoconf automake ca-certificates gcc gcc-c++ libX11-devel libXext-devel libXt-devel make tar gzip && yum clean all'
-        install_runtime_deps='yum install -y libX11 libXext libXt && yum clean all'
-        build_jobs="${GS_BUILD_JOBS:-1}"
-        ;;
-    9.18|9.22)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostscript-${version}"
-        bootstrap="configure"
-        install_build_deps='apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates libx11-dev libxext-dev libxt-dev && rm -rf /var/lib/apt/lists/*'
-        install_runtime_deps='apt-get update && apt-get install -y --no-install-recommends libx11-6 libxext6 libxt6 && rm -rf /var/lib/apt/lists/*'
-        ;;
-    9.20|9.26)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostscript-${version}"
-        bootstrap="configure"
-        install_build_deps='dnf install -y --setopt=install_weak_deps=False ca-certificates gcc gcc-c++ libX11-devel libXext-devel libXt-devel make tar gzip && dnf clean all'
-        install_runtime_deps='dnf install -y --setopt=install_weak_deps=False libX11 libXext libXt && dnf clean all'
-        ;;
-    9.50|9.53.3|9.55.0|10.0.0|10.02.1|10.03.0|10.05.0|10.05.1|10.07.1)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostscript-${version}"
-        bootstrap="configure"
-        install_build_deps='apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates libx11-dev libxext-dev libxt-dev && rm -rf /var/lib/apt/lists/*'
-        install_runtime_deps='apt-get update && apt-get install -y --no-install-recommends libx11-6 libxext6 libxt6 && rm -rf /var/lib/apt/lists/*'
-        ;;
-    9.52)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostscript-${version}"
-        bootstrap="configure"
-        install_build_deps='zypper --non-interactive --no-gpg-checks refresh && zypper --non-interactive --no-gpg-checks install --no-recommends ca-certificates gcc gcc-c++ libX11-devel libXext-devel libXt-devel make tar gzip && zypper clean --all'
-        install_runtime_deps='zypper --non-interactive --no-gpg-checks refresh && zypper --non-interactive --no-gpg-checks install --no-recommends libX11-6 libXext6 libXt6 && zypper clean --all'
-        ;;
-    9.56.1|10.03.1)
-        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostscript-${version}"
-        bootstrap="configure"
-        install_build_deps='dnf install -y --setopt=install_weak_deps=False ca-certificates gcc gcc-c++ libX11-devel libXext-devel libXt-devel make tar gzip && dnf clean all'
-        install_runtime_deps='dnf install -y --setopt=install_weak_deps=False libX11 libXext libXt && dnf clean all'
-        ;;
-    *)
-        echo "Unknown Ghostscript version for combined build: $version" >&2
-        exit 1
-        ;;
-esac
-
 if ! docker image inspect "$normal_image" >/dev/null 2>&1; then
     docker build -t "$normal_image" "versions/${version}"
+fi
+
+if ! docker image inspect "$debug_image" >/dev/null 2>&1; then
+    scripts/build-debug-image "$version" "$debug_image"
 fi
 
 dockerfile="$(mktemp)"
@@ -112,33 +29,64 @@ build_context="$(mktemp -d)"
 trap 'rm -f "$dockerfile"; rm -rf "$build_context"' EXIT
 
 cat > "$dockerfile" <<EOF
-FROM ${normal_image} AS debug-builder
+FROM ${normal_image} AS normal-image
 
-ARG GS_VERSION=${version}
+RUN set -eux; \\
+    mkdir -p /normal-root/root /normal-root/meta; \\
+    gs_path="\$(command -v gs)"; \\
+    printf '%s\n' "\$gs_path" > /normal-root/meta/gs.path; \\
+    cp -a --parents "\$gs_path" /normal-root/root; \\
+    ldd "\$gs_path" | awk '/=> \// { print \$3 } /^\// { print \$1 }' | \\
+        grep -Ev '/(ld-linux|libBrokenLocale|libSegFault|libanl|libc|libcidn|libcrypt|libdl|libm|libmvec|libnsl|libnss_|libpthread|libresolv|librt|libthread_db|libutil)\\.so' | \\
+        sort -u | \\
+        while IFS= read -r lib; do cp --dereference --preserve=mode,ownership,timestamps --parents "\$lib" /normal-root/root; done; \\
+    for path in \\
+        /opt/gs \\
+        /usr/lib/ghostscript \\
+        /usr/lib64/ghostscript \\
+        /usr/lib/x86_64-linux-gnu/ghostscript \\
+        /usr/share/color \\
+        /usr/share/fonts \\
+        /usr/share/ghostscript \\
+        /usr/share/icc; do \\
+        if [ -e "\$path" ]; then cp -a --parents "\$path" /normal-root/root; fi; \\
+    done
 
-RUN ${install_build_deps}
+FROM ${debug_image}
 
-ADD ${source_url} /tmp/gs.tar.gz
+RUN mv /opt/gs /opt/gs-debug
 
-RUN tar xzf /tmp/gs.tar.gz -C /tmp && \\
-    cd "${source_dir}" && \\
-    if [ "${patch_time_h}" = "true" ]; then find . -name time_.h -exec sed -i '/^struct timeval {$/,/^};$/d' {} +; fi && \\
-    if [ "${bootstrap}" = "autogen" ]; then cp /usr/share/automake-*/config.guess /usr/share/automake-*/config.sub . 2>/dev/null || true; fi && \\
-    export CFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
-    export CXXFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
-    if [ "${bootstrap}" = "autogen" ]; then ./autogen.sh --prefix=/opt/gs-debug; else ./configure --prefix=/opt/gs-debug; fi && \\
-    make -j${build_jobs} && \\
-    make install && \\
-    rm -rf /tmp/gs.tar.gz /tmp/ghostpdl-ghostscript-${version} /tmp/ghostscript-${version}
+COPY --from=normal-image /normal-root/root/. /opt/gs-normal/root/
+COPY --from=normal-image /normal-root/meta/. /opt/gs-normal/meta/
 
-FROM ${normal_image}
-
-COPY --from=debug-builder /opt/gs-debug /opt/gs-debug
-
-RUN ${install_runtime_deps} && \\
+RUN set -eux; \\
+    for path in \\
+        /usr/share/color \\
+        /usr/share/fonts \\
+        /usr/share/ghostscript \\
+        /usr/share/icc; do \\
+        if [ -e "/opt/gs-normal/root\$path" ] && [ ! -e "\$path" ]; then \\
+            mkdir -p "\$(dirname "\$path")"; \\
+            ln -s "/opt/gs-normal/root\$path" "\$path"; \\
+        fi; \\
+    done; \\
+    { \\
+        printf '%s\n' '#!/bin/sh'; \\
+        printf '%s\n' 'set -eu'; \\
+        printf '%s\n' 'normal_root=/opt/gs-normal/root'; \\
+        printf '%s\n' 'gs_path="\$(cat /opt/gs-normal/meta/gs.path)"'; \\
+        printf '%s\n' 'normal_lib_path="\$normal_root/lib/x86_64-linux-gnu:\$normal_root/usr/lib/x86_64-linux-gnu:\$normal_root/lib64:\$normal_root/usr/lib64:\$normal_root/lib:\$normal_root/usr/lib"'; \\
+        printf '%s\n' 'if [ "\${LD_LIBRARY_PATH:-}" ]; then'; \\
+        printf '%s\n' '    export LD_LIBRARY_PATH="\$normal_lib_path:\$LD_LIBRARY_PATH"'; \\
+        printf '%s\n' 'else'; \\
+        printf '%s\n' '    export LD_LIBRARY_PATH="\$normal_lib_path"'; \\
+        printf '%s\n' 'fi'; \\
+        printf '%s\n' 'exec "\$normal_root\$gs_path" "\$@"'; \\
+    } > /usr/local/bin/gs; \\
+    chmod +x /usr/local/bin/gs; \\
     ln -sf /opt/gs-debug/bin/gs /usr/local/bin/gs-debug
 
-ENV PATH="/usr/local/bin:\${PATH}"
+ENV PATH="/usr/local/bin:/opt/gs-debug/bin:\${PATH}"
 
 LABEL org.opencontainers.image.architecture="amd64" \\
       net.w0ot.ghostscript.cpu-architecture="x86_64" \\
@@ -149,4 +97,4 @@ WORKDIR /work
 ENTRYPOINT ["gs"]
 EOF
 
-docker build -f "$dockerfile" -t "$image" "$build_context"
+docker build --no-cache -f "$dockerfile" -t "$image" "$build_context"
