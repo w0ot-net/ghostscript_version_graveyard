@@ -62,3 +62,32 @@ complete in `README.md`.
 - `https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/8/Everything/x86_64/os/Packages/ghostscript-8.60-5.fc8.x86_64.rpm`
 - `http://old-releases.ubuntu.com/ubuntu/pool/main/g/ghostscript/ghostscript_8.61.dfsg.1~svn8187-0ubuntu3_amd64.deb`
 - `https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/os/Packages/ghostscript-8.62-3.fc9.x86_64.rpm`
+
+# TODO: ship Ghostscript source code inside every debug/combined image
+
+We want the corresponding Ghostscript source tree present inside **every**
+`gs-<version>:debug` and `gs-<version>:combined` image, so the debug symbols can
+be matched to source while debugging.
+
+Current state (not done — inconsistent and partly accidental):
+
+- Source builds 8.01, 8.15, 8.50, 8.54 happen to leave the source in
+  `/tmp/gs-gpl-<v>/` only because the cleanup line in `scripts/build-debug-image`
+  does not match that directory name.
+- All other source builds (8.61 and the existing 8.63–10.07.1 versions) delete
+  the source at the end of the build (`rm -rf /tmp/...`).
+- The debuginfo-based versions (7.07, 8.60, 8.62) keep no source: the
+  `ghostscript-debuginfo` RPM's `/usr/src/debug` tree is extracted to a temp dir
+  and then removed; only the `.debug` symbols are kept.
+
+What to do:
+
+- For source builds: keep the unpacked source tree at a stable, documented path
+  (e.g. `/usr/src/ghostscript`) instead of deleting it, for every version.
+- For debuginfo builds (7.07, 8.60, 8.62): install the `/usr/src/debug` source
+  that ships in `ghostscript-debuginfo` (and ideally relocate/symlink it to the
+  same stable path) so gdb can find it.
+- Make it consistent across `:debug` and `:combined` (combined inherits from the
+  debug image, so fixing debug covers combined).
+- Consider a publish-workflow check that the source path exists in both flavors.
+- Document the source path in `README.md` and `doc/build-notes/`.
