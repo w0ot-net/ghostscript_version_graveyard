@@ -9,12 +9,25 @@ fi
 version="$1"
 image="${2:-gs-${version}:debug}"
 
+# method is "source" (compile from a tarball) or "debuginfo" (recombine the
+# distro's stripped binary with its debug-symbol package via eu-unstrip). The
+# pre-8.70 distro-package versions split across both: the deb-based ones are
+# source-built because Debian/Ubuntu shipped no gs debug package in that era,
+# while the RPM-based ones have ghostscript-debuginfo available.
+method="source"
 source_url=""
 source_dir=""
 bootstrap=""
 base_image=""
 patch_time_h="false"
 build_jobs="${GS_BUILD_JOBS:-2}"
+# extra_apt: additional build-time -dev packages for source builds. The very old
+# (pre-8.63) trees do not bundle third-party jpeg/png/zlib/tiff sources, so the
+# system -dev packages must be present for configure to find them.
+extra_apt=""
+# debuginfo method inputs
+debuginfo_url=""
+libgs_version=""
 
 release_tag="gs${version//./}"
 
@@ -55,11 +68,102 @@ case "$version" in
         source_dir="/tmp/ghostscript-${version}"
         bootstrap="configure"
         ;;
+    8.01|8.15|8.50)
+        # GNU/GPL Ghostscript built from the distro orig tarball. The upstream
+        # ghostpdl GitHub tags for these report the wrong version (Artifex
+        # lineage), so the Ubuntu gs-gpl orig tarball is used to match the
+        # distro binary's reported version.
+        base_image="ubuntu:18.04"
+        source_url="http://old-releases.ubuntu.com/ubuntu/pool/main/g/gs-gpl/gs-gpl_${version}.orig.tar.gz"
+        source_dir="AUTO"
+        bootstrap="configure"
+        patch_time_h="true"
+        build_jobs="1"
+        extra_apt="libjpeg-dev libpng-dev zlib1g-dev libtiff-dev"
+        ;;
+    8.54)
+        # Debian etch orig tarball (no matching GitHub tag exists for 8.54).
+        base_image="ubuntu:18.04"
+        source_url="http://archive.debian.org/debian/pool/main/g/gs-gpl/gs-gpl_8.54.dfsg.1.orig.tar.gz"
+        source_dir="AUTO"
+        bootstrap="configure"
+        patch_time_h="true"
+        build_jobs="1"
+        extra_apt="libjpeg-dev libpng-dev zlib1g-dev libtiff-dev"
+        ;;
+    8.61)
+        # The Debian dfsg orig tarball fails to compile the imdi tables on
+        # modern gcc, but the ghostpdl GitHub tag builds and reports 8.61.
+        base_image="ubuntu:18.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
+        bootstrap="autogen"
+        patch_time_h="true"
+        build_jobs="1"
+        extra_apt="libjpeg-dev libpng-dev zlib1g-dev libtiff-dev"
+        ;;
+    7.07|8.60|8.62)
+        # RPM-based versions: recombine the distro's stripped gs with its
+        # ghostscript-debuginfo package instead of compiling from source.
+        method="debuginfo"
+        libgs_version="$version"
+        case "$version" in
+            7.07) debuginfo_url="http://debuginfo.centos.org/4/x86_64/ghostscript-debuginfo-7.07-33.2.el4_6.1.x86_64.rpm" ;;
+            8.60) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/8/Everything/x86_64/debug/ghostscript-debuginfo-8.60-5.fc8.x86_64.rpm" ;;
+            8.62) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/debug/ghostscript-debuginfo-8.62-3.fc9.x86_64.rpm" ;;
+        esac
+        ;;
     *)
         echo "Unknown Ghostscript version for debug build: $version" >&2
         exit 1
         ;;
 esac
+
+# The debuginfo method builds on top of the normal distro-package image and
+# recombines its stripped gs with the matching ghostscript-debuginfo package.
+if [ "$method" = "debuginfo" ]; then
+    normal_image="gs-${version}"
+    if ! docker image inspect "$normal_image" >/dev/null 2>&1; then
+        docker build -t "$normal_image" "versions/${version}"
+    fi
+
+    dockerfile="$(mktemp)"
+    build_context="$(mktemp -d)"
+    trap 'rm -f "$dockerfile"; rm -rf "$build_context"' EXIT
+
+    cat > "$dockerfile" <<EOF
+FROM ${normal_image}
+
+# Recombine the stripped distro gs (and libgs) with the detached debug symbols
+# from ghostscript-debuginfo so the gs executable itself carries .debug_info.
+RUN set -eux; \\
+    yum -y install elfutils && yum clean all; \\
+    curl -fsSL -o /tmp/dbg.rpm "${debuginfo_url}"; \\
+    mkdir -p /tmp/dbg; cd /tmp/dbg; rpm2cpio /tmp/dbg.rpm | cpio -idm --quiet; \\
+    mkdir -p /opt/gs/bin; \\
+    eu-unstrip /usr/bin/gs /tmp/dbg/usr/lib/debug/usr/bin/gs.debug -o /opt/gs/bin/gs; \\
+    chmod +x /opt/gs/bin/gs; \\
+    eu-unstrip /usr/lib64/libgs.so.${libgs_version} \\
+        /tmp/dbg/usr/lib/debug/usr/lib64/libgs.so.${libgs_version}.debug \\
+        -o /tmp/libgs.unstripped; \\
+    cp /tmp/libgs.unstripped /usr/lib64/libgs.so.${libgs_version}; \\
+    ldconfig; \\
+    rm -rf /tmp/dbg /tmp/dbg.rpm /tmp/libgs.unstripped
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+LABEL org.opencontainers.image.architecture="amd64" \\
+      net.w0ot.ghostscript.cpu-architecture="x86_64" \\
+      net.w0ot.ghostscript.build-flavor="debug" \\
+      net.w0ot.ghostscript.debug-symbols="true"
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+
+    docker build -f "$dockerfile" -t "$image" "$build_context"
+    exit 0
+fi
 
 dockerfile="$(mktemp)"
 build_context="$(mktemp -d)"
@@ -84,11 +188,14 @@ RUN apt-get update && \\
         libx11-dev \\
         libxext-dev \\
         libxt-dev \\
+        ${extra_apt} \\
         && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fSL "${source_url}" -o /tmp/gs.tar.gz && \\
     tar xzf /tmp/gs.tar.gz -C /tmp && \\
-    cd "${source_dir}" && \\
+    src="${source_dir}" && \\
+    if [ "\$src" = "AUTO" ]; then src="/tmp/\$(tar tzf /tmp/gs.tar.gz | head -1 | cut -d/ -f1)"; fi && \\
+    cd "\$src" && \\
     if [ "${patch_time_h}" = "true" ]; then find . -name time_.h -exec sed -i '/^struct timeval {$/,/^};$/d' {} +; fi && \\
     if [ "${bootstrap}" = "autogen" ]; then cp /usr/share/automake-*/config.guess /usr/share/automake-*/config.sub . 2>/dev/null || true; fi && \\
     export CFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
