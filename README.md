@@ -169,28 +169,16 @@ Combined images add this label:
 
 ### Publishing to GHCR
 
-The `Publish Ghostscript Images` GitHub Actions workflow publishes images to GitHub Container Registry. Run it manually from the Actions tab with either:
+The `Publish Ghostscript Images` GitHub Actions workflow builds, verifies, and
+pushes all three flavors (`:latest`, `:debug`, `:combined`) for one version or
+for `all` of them to `ghcr.io/w0ot-net/gs-<version>`. Run it manually from the
+Actions tab. It uses the repository `GITHUB_TOKEN` with `packages: write`; no
+personal token or registry secret is required. After the first publish, set the
+package visibility to public in GitHub Packages if anonymous pulls should work.
 
-- a single version, such as `9.50`
-- `all` to build, verify, and publish every version under `versions/`
-
-For each image, the workflow:
-
-- builds `versions/<version>/Dockerfile`
-- verifies `gs --version`
-- verifies the Docker platform architecture is `amd64`
-- verifies the architecture labels are present
-- pushes `ghcr.io/w0ot-net/gs-<version>:latest`
-- builds the companion debug image from source
-- verifies the debug image has the same `gs --version`
-- verifies the debug image has a `.debug_info` section
-- pushes `ghcr.io/w0ot-net/gs-<version>:debug`
-- builds the combined image with both `gs` and `gs-debug`
-- verifies both commands report the expected version
-- verifies `gs-debug` has a `.debug_info` section
-- pushes `ghcr.io/w0ot-net/gs-<version>:combined`
-
-The workflow uses the repository `GITHUB_TOKEN` with `packages: write`; no personal token or registry secret is required. After the first publish, set the package visibility to public in GitHub Packages if anonymous pulls should work.
+For the full workflow reference — the publish pipeline, the local build scripts
+it calls, the `gs-run` wrapper, and the verification contract — see
+[`doc/workflows.md`](doc/workflows.md).
 
 ## PostScript integer width
 
