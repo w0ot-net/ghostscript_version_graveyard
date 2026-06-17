@@ -11,7 +11,7 @@ ARG VAULT=https://ftp.iij.ad.jp/pub/linux/centos-vault/4.6/os/x86_64/CentOS/RPMS
 ARG GS=https://ftp.iij.ad.jp/pub/linux/centos-vault/4.6/updates/x86_64/RPMS/ghostscript-7.07-33.2.el4_6.1.x86_64.rpm
 
 RUN sed -i 's|^mirrorlist=|#mirrorlist=|; s|^#baseurl=http://mirror.centos.org|baseurl=https://vault.centos.org|' /etc/yum.repos.d/CentOS-Base.repo && \
-    yum -y install libpng libjpeg-turbo cups-libs glib2 libstdc++ zlib \
+    yum -y install binutils gdb libpng libjpeg-turbo cups-libs glib2 libstdc++ zlib \
         libX11 libXext libXt libSM libICE urw-fonts ghostscript-fonts && \
     yum clean all && \
     cd /tmp && \
