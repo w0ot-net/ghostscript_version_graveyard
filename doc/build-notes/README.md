@@ -18,6 +18,10 @@ One file per version:
 | [8.61](8.61.md) | Ubuntu 7.10 gutsy deb | `debian/eol:lenny` | deb extracted | `libgs8` closure; `libgnutls13` from gutsy |
 | [8.62](8.62.md) | Fedora 9 archive RPM | `centos:6` | RPM extracted | + `libjasper.so.1` |
 
+See also [debug-and-combined.md](debug-and-combined.md) for how the `:debug` and
+`:combined` images were made to work for these versions (source builds from
+distro orig tarballs vs. `ghostscript-debuginfo` recombined with `eu-unstrip`).
+
 ## The 64-bit integer premise
 
 The TODO's reason for collecting these versions: Ghostscript before 8.70 stored
