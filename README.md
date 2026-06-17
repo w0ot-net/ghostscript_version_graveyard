@@ -194,6 +194,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 8.15     | 2005 | apt package  | debian/eol:etch    | Yes                | x86_64        |
 | 8.50     | 2006 | apt package  | debian/eol:lenny   | Yes                | x86_64        |
 | 8.54     | 2007 | apt package  | debian/eol:etch    | Yes                | x86_64        |
+| 8.61     | 2007 | apt package  | debian/eol:lenny   | Yes                | x86_64        |
 | 8.63     | 2008 | Source build | ubuntu:18.04       | Yes                | x86_64        |
 | 8.64     | 2009 | Source build | ubuntu:18.04       | Yes                | x86_64        |
 | 8.71     | 2010 | Source build | ubuntu:18.04       | No                 | x86_64        |
