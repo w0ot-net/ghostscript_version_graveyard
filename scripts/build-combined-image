@@ -33,7 +33,7 @@ FROM ${normal_image} AS normal-image
 
 RUN set -eux; \\
     mkdir -p /normal-root/root /normal-root/meta; \\
-    gs_path="\$(command -v gs)"; \\
+    gs_path="\$(readlink -f "\$(command -v gs)")"; \\
     printf '%s\n' "\$gs_path" > /normal-root/meta/gs.path; \\
     cp -a --parents "\$gs_path" /normal-root/root; \\
     ldd "\$gs_path" | awk '/=> \// { print \$3 } /^\// { print \$1 }' | \\
@@ -48,13 +48,17 @@ RUN set -eux; \\
         /usr/share/color \\
         /usr/share/fonts \\
         /usr/share/ghostscript \\
+        /usr/share/gs-gpl \\
         /usr/share/icc; do \\
         if [ -e "\$path" ]; then cp -a --parents "\$path" /normal-root/root; fi; \\
     done
 
 FROM ${debug_image}
 
-RUN mv /opt/gs /opt/gs-debug
+# Move the source-built debug tree aside, but keep /opt/gs pointing at it so the
+# gs-debug binary's compiled-in resource search path (/opt/gs/share/ghostscript)
+# still resolves and gs-debug can render, not just report --version.
+RUN mv /opt/gs /opt/gs-debug && ln -s /opt/gs-debug /opt/gs
 
 COPY --from=normal-image /normal-root/root/. /opt/gs-normal/root/
 COPY --from=normal-image /normal-root/meta/. /opt/gs-normal/meta/
@@ -64,6 +68,7 @@ RUN set -eux; \\
         /usr/share/color \\
         /usr/share/fonts \\
         /usr/share/ghostscript \\
+        /usr/share/gs-gpl \\
         /usr/share/icc; do \\
         if [ -e "/opt/gs-normal/root\$path" ] && [ ! -e "\$path" ]; then \\
             mkdir -p "\$(dirname "\$path")"; \\
