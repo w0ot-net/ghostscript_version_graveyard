@@ -33,13 +33,14 @@ FROM ${normal_image} AS normal-image
 
 RUN set -eux; \\
     mkdir -p /normal-root/root /normal-root/meta; \\
+    clone_into() { dst="/normal-root/root\$(dirname "\$1")"; mkdir -p "\$dst"; cp "\$2" "\$1" "\$dst/"; }; \\
     gs_path="\$(readlink -f "\$(command -v gs)")"; \\
     printf '%s\n' "\$gs_path" > /normal-root/meta/gs.path; \\
-    cp -a --parents "\$gs_path" /normal-root/root; \\
+    clone_into "\$gs_path" -a; \\
     ldd "\$gs_path" | awk '/=> \// { print \$3 } /^\// { print \$1 }' | \\
         grep -Ev '/(ld-linux|libBrokenLocale|libSegFault|libanl|libc|libcidn|libcrypt|libdl|libm|libmvec|libnsl|libnss_|libpthread|libresolv|librt|libthread_db|libutil)\\.so' | \\
         sort -u | \\
-        while IFS= read -r lib; do cp --dereference --preserve=mode,ownership,timestamps --parents "\$lib" /normal-root/root; done; \\
+        while IFS= read -r lib; do clone_into "\$lib" -L; done; \\
     for path in \\
         /opt/gs \\
         /usr/lib/ghostscript \\
@@ -50,7 +51,7 @@ RUN set -eux; \\
         /usr/share/ghostscript \\
         /usr/share/gs-gpl \\
         /usr/share/icc; do \\
-        if [ -e "\$path" ]; then cp -a --parents "\$path" /normal-root/root; fi; \\
+        if [ -e "\$path" ]; then clone_into "\$path" -a; fi; \\
     done
 
 FROM ${debug_image}
