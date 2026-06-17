@@ -90,19 +90,8 @@ jobs:
           }
 
           local_image="gs-$VERSION"
-          remote_image="$REGISTRY/$owner/$local_image:latest"
-          debug_image="$local_image:debug"
-          remote_debug_image="$REGISTRY/$owner/$local_image:debug"
           combined_image="$local_image:combined"
           remote_combined_image="$REGISTRY/$owner/$local_image:combined"
-
-          echo "::group::Build $local_image"
-          docker build \
-            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-            --label "org.opencontainers.image.description=Ghostscript $VERSION container" \
-            -t "$local_image" \
-            "versions/$VERSION"
-          echo "::endgroup::"
 
           expected_version="$VERSION"
           case "$VERSION" in
@@ -111,74 +100,9 @@ jobs:
               ;;
           esac
 
-          actual_version="$(docker run --rm "$local_image" --version)"
-          if [ "$actual_version" != "$expected_version" ]; then
-            echo "::error::$local_image reported version $actual_version, expected $expected_version"
-            exit 1
-          fi
-
-          platform_arch="$(docker image inspect "$local_image" --format '{{ .Architecture }}')"
-          if [ "$platform_arch" != "amd64" ]; then
-            echo "::error::$local_image platform architecture is $platform_arch, expected amd64"
-            exit 1
-          fi
-
-          oci_arch="$(docker image inspect "$local_image" --format '{{ index .Config.Labels "org.opencontainers.image.architecture" }}')"
-          if [ "$oci_arch" != "amd64" ]; then
-            echo "::error::$local_image OCI architecture label is $oci_arch, expected amd64"
-            exit 1
-          fi
-
-          gs_cpu_arch="$(docker image inspect "$local_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}')"
-          if [ "$gs_cpu_arch" != "x86_64" ]; then
-            echo "::error::$local_image Ghostscript CPU architecture label is $gs_cpu_arch, expected x86_64"
-            exit 1
-          fi
-
-          echo "::group::Build $debug_image"
-          scripts/build-debug-image "$VERSION" "$debug_image"
-          echo "::endgroup::"
-
-          debug_actual_version="$(docker run --rm "$debug_image" --version)"
-          if [ "$debug_actual_version" != "$expected_version" ]; then
-            echo "::error::$debug_image reported version $debug_actual_version, expected $expected_version"
-            exit 1
-          fi
-
-          debug_platform_arch="$(docker image inspect "$debug_image" --format '{{ .Architecture }}')"
-          if [ "$debug_platform_arch" != "amd64" ]; then
-            echo "::error::$debug_image platform architecture is $debug_platform_arch, expected amd64"
-            exit 1
-          fi
-
-          debug_oci_arch="$(docker image inspect "$debug_image" --format '{{ index .Config.Labels "org.opencontainers.image.architecture" }}')"
-          if [ "$debug_oci_arch" != "amd64" ]; then
-            echo "::error::$debug_image OCI architecture label is $debug_oci_arch, expected amd64"
-            exit 1
-          fi
-
-          debug_gs_cpu_arch="$(docker image inspect "$debug_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}')"
-          if [ "$debug_gs_cpu_arch" != "x86_64" ]; then
-            echo "::error::$debug_image Ghostscript CPU architecture label is $debug_gs_cpu_arch, expected x86_64"
-            exit 1
-          fi
-
-          debug_flavor="$(docker image inspect "$debug_image" --format '{{ index .Config.Labels "net.w0ot.ghostscript.build-flavor" }}')"
-          if [ "$debug_flavor" != "debug" ]; then
-            echo "::error::$debug_image build flavor label is $debug_flavor, expected debug"
-            exit 1
-          fi
-
-          if ! docker run --rm --entrypoint sh "$debug_image" -c 'readelf -S "$(command -v gs)" | grep -q "\.debug_info"'; then
-            echo "::error::$debug_image does not contain a .debug_info section in the gs executable"
-            exit 1
-          fi
-
-          if ! docker run --rm --entrypoint sh "$debug_image" -c '[ -n "$(ls -A /usr/src/ghostscript 2>/dev/null)" ]'; then
-            echo "::error::$debug_image does not contain Ghostscript source under /usr/src/ghostscript"
-            exit 1
-          fi
-
+          # The combined image is the only published artifact. It contains gs,
+          # gs-debug, and the source, and build-combined-image builds the normal
+          # and debug images it needs as intermediate stages.
           echo "::group::Build $combined_image"
           scripts/build-combined-image "$VERSION" "$combined_image"
           echo "::endgroup::"
@@ -229,9 +153,5 @@ jobs:
             exit 1
           fi
 
-          docker tag "$local_image" "$remote_image"
-          docker tag "$debug_image" "$remote_debug_image"
           docker tag "$combined_image" "$remote_combined_image"
-          push_with_retry "$remote_image"
-          push_with_retry "$remote_debug_image"
           push_with_retry "$remote_combined_image"

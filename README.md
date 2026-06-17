@@ -25,18 +25,18 @@ cd ghostscript_version_graveyard
 
 ### Usage
 
-Use the `gs-run` wrapper to invoke any version. The Docker image is built automatically on first run (source builds may take a few minutes; package-based versions are faster).
+Use the `gs-run` wrapper to invoke any version. There is one image per version,
+`gs-<version>:combined`, which contains both the normal `gs` and the debug
+`gs-debug` binaries plus the Ghostscript source. The image is built automatically
+on first run (this builds the normal and debug stages, so the first run may take
+a few minutes).
 
 ```bash
-# Check a version
+# Check a version (runs gs)
 ./gs-run 9.50 -- --version
 
-# Check a companion debug build
+# Run the debug binary (gs-debug) instead
 ./gs-run --debug 9.50 -- --version
-
-# Check the combined image's normal and debug binaries
-./gs-run --combined 9.50 -- --version
-./gs-run --combined-debug 9.50 -- --version
 
 # List available versions
 ./gs-run
@@ -62,33 +62,30 @@ To build every version up front instead of on first use:
 ```bash
 for dir in versions/*/; do
   version=$(basename "$dir")
-  echo "Building gs-$version..."
-  docker build -t "gs-$version" "$dir"
+  echo "Building gs-$version:combined..."
+  scripts/build-combined-image "$version"
 done
 ```
 
 ### Pulling published images
 
-Images can be published to GitHub Container Registry as `ghcr.io/w0ot-net/gs-<version>:latest`.
-Companion debug builds are published as `ghcr.io/w0ot-net/gs-<version>:debug`.
-Combined builds are published as `ghcr.io/w0ot-net/gs-<version>:combined`.
-The `latest` tag remains the normal runtime build; debug and combined builds are additional tags.
+One image per version is published to GitHub Container Registry:
+`ghcr.io/w0ot-net/gs-<version>:combined`. It contains the normal `gs`, the debug
+`gs-debug`, and the Ghostscript source under `/usr/src/ghostscript`. (There are no
+separate `:latest` or `:debug` tags — `:combined` is the single image.)
 
 ```bash
-# Pull a published image
-docker pull ghcr.io/w0ot-net/gs-9.50:latest
-
-# Pull the companion debug image
-docker pull ghcr.io/w0ot-net/gs-9.50:debug
-
-# Pull the combined image with both gs and gs-debug
+# Pull the image
 docker pull ghcr.io/w0ot-net/gs-9.50:combined
 
-# Check a published image
-docker run --rm ghcr.io/w0ot-net/gs-9.50:latest --version
+# Check it (runs gs)
+docker run --rm ghcr.io/w0ot-net/gs-9.50:combined --version
+
+# Run the debug binary
+docker run --rm --entrypoint gs-debug ghcr.io/w0ot-net/gs-9.50:combined --version
 
 # Run Ghostscript from the current directory
-docker run --rm -v "$(pwd):/work" ghcr.io/w0ot-net/gs-9.50:latest \
+docker run --rm -v "$(pwd):/work" ghcr.io/w0ot-net/gs-9.50:combined \
   -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=out.pdf input.ps
 ```
 
@@ -96,39 +93,44 @@ docker run --rm -v "$(pwd):/work" ghcr.io/w0ot-net/gs-9.50:latest \
 
 Each Ghostscript version gets its own Docker image. Some versions are compiled from public upstream source tarballs on a compatible base image; others use distro packages directly.
 
-Images keep the canonical `gs-<version>` tag. Each Dockerfile also labels the image with the architecture of the hosted `gs` executable:
+Each version produces a single image, `gs-<version>:combined`, which bundles
+everything:
+
+- `gs`: the normal binary from `versions/<version>/Dockerfile` (a distro package
+  build or a source build, depending on the version)
+- `gs-debug`: a debug binary at `/usr/local/bin/gs-debug` with a `.debug_info`
+  section
+- `gdb` and `binutils` for inspecting either binary
+- the matching Ghostscript source under `/usr/src/ghostscript`
+
+The image carries these labels:
 
 - `org.opencontainers.image.architecture=amd64`
-- `net.w0ot.ghostscript.cpu-architecture=x86_64`
-
-Inspect those labels with:
+- `net.w0ot.ghostscript.cpu-architecture=x86_64` (architecture of the hosted `gs`)
+- `net.w0ot.ghostscript.build-flavor=combined`
+- `net.w0ot.ghostscript.debug-symbols=true`
 
 ```bash
-docker image inspect gs-9.50 \
+docker image inspect gs-9.50:combined \
   --format '{{ index .Config.Labels "net.w0ot.ghostscript.cpu-architecture" }}'
 ```
 
-### Debug Builds
+### How the image is built
 
-Debug images are companions to the normal images. They do not replace the default `gs-<version>:latest` images.
+`scripts/build-combined-image <version>` assembles `gs-<version>:combined` from
+two intermediate builds (kept local, not published):
 
-Locally, build or run a debug companion with:
+1. the **normal** image from `versions/<version>/Dockerfile` — the source of the
+   `gs` binary
+2. a **debug** image from `scripts/build-debug-image <version>` — the source of
+   `gs-debug`
 
-```bash
-scripts/build-debug-image 9.50
-./gs-run --debug 9.50 -- --version
-```
-
-Debug companions are tagged as `gs-<version>:debug`. They include `gdb`,
-`binutils`, an unstripped `gs` executable with a `.debug_info` section, and the
-matching Ghostscript source tree under `/usr/src/ghostscript`.
-
-`scripts/build-debug-image` prefers the distro's own debug symbols and only
-falls back to a source build when no usable gs debug package exists:
+`scripts/build-debug-image` prefers the distro's own debug symbols and only falls
+back to a source build when no usable gs debug package exists:
 
 - **Distro debug symbols (preferred).** For distro-package versions, the stripped
   `gs` (and `libgs.so`) are recombined with the distro debug-symbol package via
-  `eu-unstrip`, so the executables carry a real `.debug_info` section matching the
+  `eu-unstrip`, so the executable carries a real `.debug_info` section matching the
   shipped binary. Symbols come from `ghostscript-dbg` / `*-dbgsym` on
   Debian/Ubuntu, `ghostscript-debuginfo` on Fedora/openSUSE/CentOS.
 - **Source build (fallback).** Where the distro ships no usable gs debug package
@@ -139,49 +141,17 @@ falls back to a source build when no usable gs debug package exists:
   the installed security point release) — `gs` is compiled from the matching
   upstream/orig tarball with `-g3 -O0 -fno-omit-frame-pointer`.
 
-Either way the result satisfies the same checks: correct `gs --version`, a
-`.debug_info` section in the `gs` executable, the source under
-`/usr/src/ghostscript`, and the architecture/flavor labels.
-
-Debug images add these labels:
-
-- `net.w0ot.ghostscript.build-flavor=debug`
-- `net.w0ot.ghostscript.debug-symbols=true`
-
-### Combined Builds
-
-Combined images are a third image set. They do not replace either the normal `latest` images or the companion `debug` images.
-
-Locally, build or run a combined image with:
-
-```bash
-scripts/build-combined-image 9.50
-./gs-run --combined 9.50 -- --version
-./gs-run --combined-debug 9.50 -- --version
-```
-
-Combined images are tagged as `gs-<version>:combined` and contain:
-
-- `gs`: the normal binary from `versions/<version>/Dockerfile`, preserving distro package builds whenever that Dockerfile uses one
-- `gs-debug`: the debug binary from the companion debug image, installed at `/usr/local/bin/gs-debug` (distro debug symbols where available, otherwise a source build — see Debug Builds above)
-- the Ghostscript source under `/usr/src/ghostscript`, inherited from the debug image
-
-The combined image is assembled from the normal and debug companion images, so `gs-debug` is the same debug build published as `gs-<version>:debug`.
-
-The combined build scripts default to at most two parallel compiler jobs, and the legacy autoconf builds default to one. Set `GS_BUILD_JOBS` to override that locally.
-
-Combined images add this label:
-
-- `net.w0ot.ghostscript.build-flavor=combined`
+The build scripts default to at most two parallel compiler jobs (legacy autoconf
+builds default to one). Set `GS_BUILD_JOBS` to override that locally.
 
 ### Publishing to GHCR
 
 The `Publish Ghostscript Images` GitHub Actions workflow builds, verifies, and
-pushes all three flavors (`:latest`, `:debug`, `:combined`) for one version or
-for `all` of them to `ghcr.io/w0ot-net/gs-<version>`. Run it manually from the
-Actions tab. It uses the repository `GITHUB_TOKEN` with `packages: write`; no
-personal token or registry secret is required. After the first publish, set the
-package visibility to public in GitHub Packages if anonymous pulls should work.
+pushes `gs-<version>:combined` for one version or for `all` of them to
+`ghcr.io/w0ot-net/gs-<version>`. Run it manually from the Actions tab. It uses
+the repository `GITHUB_TOKEN` with `packages: write`; no personal token or
+registry secret is required. After the first publish, set the package visibility
+to public in GitHub Packages if anonymous pulls should work.
 
 For the full workflow reference — the publish pipeline, the local build scripts
 it calls, the `gs-run` wrapper, and the verification contract — see
@@ -245,7 +215,11 @@ choice, dependency closure, gotchas, and the verification probe.
 
 ## Adding a new version
 
-1. Create a Dockerfile under `versions/<version>/Dockerfile`
-2. Add the entry to the table above
-3. Build: `docker build -t gs-<version> versions/<version>/`
-4. Run: `docker run --rm -v "$(pwd):/work" gs-<version> <gs args>`
+1. Create a Dockerfile under `versions/<version>/Dockerfile` (this defines the
+   normal `gs` build that becomes the `gs` binary in the combined image).
+2. If the version is not already covered by a range in
+   `scripts/build-debug-image`, add a case for it (choose a distro debug-symbol
+   method, or source as a fallback).
+3. Add the entry to the table above.
+4. Build the combined image: `scripts/build-combined-image <version>`
+5. Run it: `./gs-run <version> -- --version`

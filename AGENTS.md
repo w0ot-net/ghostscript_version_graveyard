@@ -10,6 +10,9 @@ Dockerfiles go in `versions/<version>/Dockerfile`. Docker images are tagged `gs-
 
 ## Before committing
 
-- Build the Docker image and verify `gs --version` outputs the expected version.
+- Build the combined image (`scripts/build-combined-image <version>`) and verify
+  both `gs --version` and `gs-debug --version` output the expected version. The
+  combined image is the only published artifact; the normal and debug images are
+  built as intermediate stages.
 - Update the versions table in `README.md` when adding or removing a version.
 - Never put credentials or secrets in Dockerfiles. Everything should build from public package repos or source tarballs.
