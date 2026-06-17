@@ -190,6 +190,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 
 | Version  | Year | Source       | Base Image         | 64-bit PS integers | `gs` CPU arch |
 |----------|------|--------------|--------------------|--------------------|---------------|
+| 7.07     | 2003 | yum package  | centos:6           | Yes                | x86_64        |
 | 8.01     | 2004 | apt package  | debian/eol:etch    | Yes                | x86_64        |
 | 8.15     | 2005 | apt package  | debian/eol:etch    | Yes                | x86_64        |
 | 8.50     | 2006 | apt package  | debian/eol:lenny   | Yes                | x86_64        |
