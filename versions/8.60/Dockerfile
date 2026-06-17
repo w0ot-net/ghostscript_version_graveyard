@@ -8,7 +8,7 @@ FROM centos:6
 ARG RPM=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/8/Everything/x86_64/os/Packages/ghostscript-8.60-5.fc8.x86_64.rpm
 
 RUN sed -i 's|^mirrorlist=|#mirrorlist=|; s|^#baseurl=http://mirror.centos.org|baseurl=https://vault.centos.org|' /etc/yum.repos.d/CentOS-Base.repo && \
-    yum -y install libtiff libjpeg-turbo libpng cups-libs krb5-libs fontconfig libstdc++ && \
+    yum -y install binutils gdb libtiff libjpeg-turbo libpng cups-libs krb5-libs fontconfig libstdc++ && \
     yum clean all && \
     curl -fsSL -o /tmp/gs.rpm "${RPM}" && \
     cd / && rpm2cpio /tmp/gs.rpm | cpio -idm --quiet && \
