@@ -9,30 +9,49 @@ fi
 version="$1"
 image="${2:-gs-${version}:debug}"
 
-# method is "source" (compile from a tarball) or "debuginfo" (recombine the
-# distro's stripped binary with its debug-symbol package via eu-unstrip). The
-# pre-8.70 distro-package versions split across both: the deb-based ones are
-# source-built because Debian/Ubuntu shipped no gs debug package in that era,
-# while the RPM-based ones have ghostscript-debuginfo available.
+# Debug build method, in order of preference (distro debug symbols first, source
+# only as a fallback):
+#   deb        - Debian/Ubuntu: install the distro debug symbols (ghostscript-dbg
+#                or *-dbgsym), recombine into the gs/libgs binaries with eu-unstrip.
+#   rpm-pm     - Fedora/openSUSE: fetch the version-matched ghostscript-debuginfo
+#                (and debugsource) from the archive and recombine.
+#   debuginfo  - CentOS-hosted RPM payloads (7.07/8.60/8.62) whose normal image is
+#                an extracted RPM (no rpmdb), so a fixed debuginfo URL is used.
+#   source     - compile from an upstream/orig tarball with -g3 -O0. Used for the
+#                pure-source versions and where no distro gs debug package exists.
+# Every method leaves the Ghostscript source under /usr/src/ghostscript.
 method="source"
+
+# source method inputs
 source_url=""
 source_dir=""
 bootstrap=""
 base_image=""
 patch_time_h="false"
 build_jobs="${GS_BUILD_JOBS:-2}"
-# extra_apt: additional build-time -dev packages for source builds. The very old
-# (pre-8.63) trees do not bundle third-party jpeg/png/zlib/tiff sources, so the
-# system -dev packages must be present for configure to find them.
 extra_apt=""
-# debuginfo method inputs
+
+# debuginfo (fixed-URL) method inputs
 debuginfo_url=""
 libgs_version=""
+
+# deb method inputs
+deb_dbg_pkgs=""    # debug-symbol packages to install
+deb_dbg_repo=""    # optional extra apt source lines (e.g. ddebs), newline-separated
+deb_update_opts="" # extra apt-get update options (e.g. expired-archive override)
+deb_install_opts="" # extra apt-get install options (e.g. --force-yes)
+src_url=""         # source tarball to unpack into /usr/src/ghostscript
+
+# rpm-pm method inputs
+dbg_bases=""      # space-separated archive dirs to search for the debuginfo rpms
 
 release_tag="gs${version//./}"
 
 case "$version" in
-    8.63)
+    8.63|8.64|8.71|9.01|9.06|9.10|9.14)
+        # Source fallbacks: 9.06 (jessie ghostscript-dbg uses a path-style layout
+        # eu-unstrip rejects) and 9.10/9.14 (Fedora 20/21 archive cannot install
+        # elfutils to run the recombine).
         base_image="ubuntu:18.04"
         source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
         source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
@@ -40,39 +59,20 @@ case "$version" in
         patch_time_h="true"
         build_jobs="1"
         ;;
-    8.64|8.71|9.01)
-        base_image="ubuntu:18.04"
-        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
-        bootstrap="autogen"
-        patch_time_h="true"
-        build_jobs="1"
-        ;;
-    9.06|9.10|9.14)
-        base_image="ubuntu:18.04"
-        source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
-        bootstrap="autogen"
-        patch_time_h="true"
-        build_jobs="1"
-        ;;
-    9.18|9.20|9.22|9.26)
-        base_image="ubuntu:18.04"
-        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
-        source_dir="/tmp/ghostscript-${version}"
-        bootstrap="configure"
-        ;;
-    9.50|9.52|9.53.3|9.55.0|9.56.1|10.0.0|10.02.1|10.03.0|10.03.1|10.05.0|10.05.1|10.07.1)
+    9.53.3|9.55.0|10.0.0|10.02.1|10.03.0|10.05.0|10.05.1|10.07.1)
+        # Pure-source versions and the Debian/Ubuntu versions whose distro ships
+        # no usable gs debug package: bullseye/bookworm/trixie and plucky have no
+        # gs dbgsym at all; jammy/noble (9.55.0/10.02.1) ship a dbgsym only for
+        # the GA revision, not the installed -security point release. Build from
+        # the upstream release tarball.
         base_image="ubuntu:24.04"
         source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
         source_dir="/tmp/ghostscript-${version}"
         bootstrap="configure"
         ;;
     8.01|8.15|8.50)
-        # GNU/GPL Ghostscript built from the distro orig tarball. The upstream
-        # ghostpdl GitHub tags for these report the wrong version (Artifex
-        # lineage), so the Ubuntu gs-gpl orig tarball is used to match the
-        # distro binary's reported version.
+        # GNU/GPL Ghostscript built from the distro orig tarball (the ghostpdl
+        # GitHub tags report the wrong version for these).
         base_image="ubuntu:18.04"
         source_url="http://old-releases.ubuntu.com/ubuntu/pool/main/g/gs-gpl/gs-gpl_${version}.orig.tar.gz"
         source_dir="AUTO"
@@ -82,7 +82,6 @@ case "$version" in
         extra_apt="libjpeg-dev libpng-dev zlib1g-dev libtiff-dev"
         ;;
     8.54)
-        # Debian etch orig tarball (no matching GitHub tag exists for 8.54).
         base_image="ubuntu:18.04"
         source_url="http://archive.debian.org/debian/pool/main/g/gs-gpl/gs-gpl_8.54.dfsg.1.orig.tar.gz"
         source_dir="AUTO"
@@ -92,8 +91,6 @@ case "$version" in
         extra_apt="libjpeg-dev libpng-dev zlib1g-dev libtiff-dev"
         ;;
     8.61)
-        # The Debian dfsg orig tarball fails to compile the imdi tables on
-        # modern gcc, but the ghostpdl GitHub tag builds and reports 8.61.
         base_image="ubuntu:18.04"
         source_url="https://github.com/ArtifexSoftware/ghostpdl/archive/refs/tags/ghostscript-${version}.tar.gz"
         source_dir="/tmp/ghostpdl-ghostscript-${version}/gs"
@@ -102,9 +99,50 @@ case "$version" in
         build_jobs="1"
         extra_apt="libjpeg-dev libpng-dev zlib1g-dev libtiff-dev"
         ;;
+    9.20)
+        # Fedora 25 archive cannot install elfutils (elfutils-libelf conflict),
+        # so the recombine is not possible; build from source instead.
+        base_image="ubuntu:18.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostscript-${version}"
+        bootstrap="configure"
+        ;;
+    9.18)
+        # Ubuntu xenial: ghostscript-dbg in main; elfutils lives in universe.
+        method="deb"
+        deb_dbg_repo="deb http://archive.ubuntu.com/ubuntu xenial universe"
+        deb_dbg_pkgs="ghostscript-dbg"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    9.22|9.50)
+        # Ubuntu bionic/focal: manual ghostscript-dbg package in main.
+        method="deb"
+        deb_dbg_pkgs="ghostscript-dbg"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    9.26)
+        method="rpm-pm"
+        dbg_bases="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/30/Everything/x86_64/debug/tree/Packages/g"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    9.56.1)
+        # Installed version comes from fedora 36 updates, so search updates first.
+        method="rpm-pm"
+        dbg_bases="https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/36/Everything/x86_64/debug/Packages/g https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/36/Everything/x86_64/debug/tree/Packages/g"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    10.03.1)
+        method="rpm-pm"
+        dbg_bases="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/41/Everything/x86_64/debug/tree/Packages/g https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/41/Everything/x86_64/debug/Packages/g"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    9.52)
+        method="rpm-pm"
+        dbg_bases="http://download.opensuse.org/debug/distribution/leap/15.5/repo/oss/x86_64"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
     7.07|8.60|8.62)
-        # RPM-based versions: recombine the distro's stripped gs with its
-        # ghostscript-debuginfo package instead of compiling from source.
+        # CentOS-hosted extracted-RPM payloads (no rpmdb): fixed debuginfo URL.
         method="debuginfo"
         libgs_version="$version"
         case "$version" in
@@ -119,23 +157,31 @@ case "$version" in
         ;;
 esac
 
-# The debuginfo method builds on top of the normal distro-package image and
-# recombines its stripped gs with the matching ghostscript-debuginfo package.
-if [ "$method" = "debuginfo" ]; then
+dockerfile="$(mktemp)"
+build_context="$(mktemp -d)"
+trap 'rm -f "$dockerfile"; rm -rf "$build_context"' EXIT
+
+# Shared label block appended to every generated Dockerfile.
+labels='LABEL org.opencontainers.image.architecture="amd64" \
+      net.w0ot.ghostscript.cpu-architecture="x86_64" \
+      net.w0ot.ghostscript.build-flavor="debug" \
+      net.w0ot.ghostscript.debug-symbols="true"'
+
+ensure_normal_image() {
     normal_image="gs-${version}"
     if ! docker image inspect "$normal_image" >/dev/null 2>&1; then
         docker build -t "$normal_image" "versions/${version}"
     fi
+}
 
-    dockerfile="$(mktemp)"
-    build_context="$(mktemp -d)"
-    trap 'rm -f "$dockerfile"; rm -rf "$build_context"' EXIT
-
+if [ "$method" = "debuginfo" ]; then
+    ensure_normal_image
     cat > "$dockerfile" <<EOF
-FROM ${normal_image}
+FROM gs-${version}
 
 # Recombine the stripped distro gs (and libgs) with the detached debug symbols
-# from ghostscript-debuginfo so the gs executable itself carries .debug_info.
+# from ghostscript-debuginfo so the gs executable itself carries .debug_info,
+# and keep the matching source under /usr/src/ghostscript.
 RUN set -eux; \\
     yum -y install elfutils && yum clean all; \\
     curl -fsSL -o /tmp/dbg.rpm "${debuginfo_url}"; \\
@@ -148,27 +194,116 @@ RUN set -eux; \\
         -o /tmp/libgs.unstripped; \\
     cp /tmp/libgs.unstripped /usr/lib64/libgs.so.${libgs_version}; \\
     ldconfig; \\
+    mkdir -p /usr/src/debug; cp -aT /tmp/dbg/usr/src/debug /usr/src/debug; \\
+    ln -s "\$(ls -d /usr/src/debug/ghostscript-* | head -1)" /usr/src/ghostscript; \\
     rm -rf /tmp/dbg /tmp/dbg.rpm /tmp/libgs.unstripped
 
 ENV PATH="/opt/gs/bin:\${PATH}"
 
-LABEL org.opencontainers.image.architecture="amd64" \\
-      net.w0ot.ghostscript.cpu-architecture="x86_64" \\
-      net.w0ot.ghostscript.build-flavor="debug" \\
-      net.w0ot.ghostscript.debug-symbols="true"
+${labels}
 
 WORKDIR /work
 ENTRYPOINT ["gs"]
 EOF
-
     docker build -f "$dockerfile" -t "$image" "$build_context"
     exit 0
 fi
 
-dockerfile="$(mktemp)"
-build_context="$(mktemp -d)"
-trap 'rm -f "$dockerfile"; rm -rf "$build_context"' EXIT
+if [ "$method" = "deb" ]; then
+    ensure_normal_image
+    # Write any extra apt sources (e.g. ddebs) into the debug repo list.
+    repo_cmd=":"
+    if [ -n "$deb_dbg_repo" ]; then
+        repo_b64="$(printf '%s\n' "$deb_dbg_repo" | base64 | tr -d '\n')"
+        repo_cmd="echo ${repo_b64} | base64 -d > /etc/apt/sources.list.d/debug.list"
+    fi
+    cat > "$dockerfile" <<EOF
+FROM gs-${version}
 
+# Install the distro debug symbols, recombine them into the gs/libgs binaries so
+# the executables carry .debug_info, and unpack the matching source.
+RUN set -eux; \\
+    ${repo_cmd}; \\
+    apt-get ${deb_update_opts} update; \\
+    apt-get install -y ${deb_install_opts} --no-install-recommends ${deb_dbg_pkgs} \\
+        elfutils binutils file curl ca-certificates; \\
+    recombine() { \\
+        bid="\$(file "\$1" | sed -n 's/.*BuildID\\[sha1\\]=\\([0-9a-f]*\\).*/\\1/p')"; \\
+        d="/usr/lib/debug/.build-id/\${bid%\${bid#??}}/\${bid#??}.debug"; \\
+        [ -f "\$d" ] || d="/usr/lib/debug\$1.debug"; \\
+        [ -f "\$d" ] || d="/usr/lib/debug\$1"; \\
+        eu-unstrip "\$1" "\$d" -o "\$2"; \\
+    }; \\
+    mkdir -p /opt/gs/bin; \\
+    recombine "\$(command -v gs)" /opt/gs/bin/gs; chmod +x /opt/gs/bin/gs; \\
+    lib="\$(ls /usr/lib/*/libgs.so.*.* /usr/lib/libgs.so.*.* 2>/dev/null | head -1 || true)"; \\
+    if [ -n "\$lib" ]; then recombine "\$lib" /tmp/libgs && cp /tmp/libgs "\$lib" && ldconfig; fi; \\
+    mkdir -p /usr/src; curl -fSLk "${src_url}" -o /tmp/src.tgz; \\
+    tar xzf /tmp/src.tgz -C /tmp; \\
+    mv "/tmp/\$(tar tzf /tmp/src.tgz | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
+    rm -f /tmp/src.tgz /tmp/libgs; \\
+    /opt/gs/bin/gs --version
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+${labels}
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+    docker build -f "$dockerfile" -t "$image" "$build_context"
+    exit 0
+fi
+
+if [ "$method" = "rpm-pm" ]; then
+    ensure_normal_image
+    cat > "$dockerfile" <<EOF
+FROM gs-${version}
+
+# Fetch the version-matched ghostscript-debuginfo from the archive, recombine it
+# into the gs/libgs binaries so they carry .debug_info, and unpack the matching
+# upstream source into /usr/src/ghostscript.
+RUN set -eux; \\
+    if command -v dnf >/dev/null 2>&1; then dnf install -y elfutils cpio curl file tar gzip >/dev/null; \\
+    elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive --no-gpg-checks install elfutils cpio curl file tar gzip >/dev/null; \\
+    else yum install -y elfutils cpio curl file tar gzip >/dev/null; fi; \\
+    nevr="\$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}' ghostscript)"; \\
+    mkdir -p /tmp/dbg; cd /tmp/dbg; \\
+    got=""; \\
+    for base in ${dbg_bases}; do \\
+        if curl -fsSL -o /tmp/p.rpm "\$base/ghostscript-debuginfo-\${nevr}.rpm"; then got=1; break; fi; \\
+    done; \\
+    [ -n "\$got" ] || { echo "could not fetch ghostscript-debuginfo-\${nevr}.rpm" >&2; exit 1; }; \\
+    rpm2cpio /tmp/p.rpm | cpio -idm --quiet; rm -f /tmp/p.rpm; \\
+    recombine() { \\
+        bid="\$(file "\$1" | sed -n 's/.*BuildID\\[sha1\\]=\\([0-9a-f]*\\).*/\\1/p')"; \\
+        d="/tmp/dbg/usr/lib/debug/.build-id/\${bid%\${bid#??}}/\${bid#??}.debug"; \\
+        [ -f "\$d" ] || d="/tmp/dbg/usr/lib/debug\$1.debug"; \\
+        [ -f "\$d" ] || d="\$(find /tmp/dbg/usr/lib/debug -name "\$(basename "\$1")*.debug" | head -1)"; \\
+        eu-unstrip "\$1" "\$d" -o "\$2"; \\
+    }; \\
+    mkdir -p /opt/gs/bin; \\
+    recombine "\$(command -v gs)" /opt/gs/bin/gs; chmod +x /opt/gs/bin/gs; \\
+    lib="\$(ls /usr/lib64/libgs.so.*.* /usr/lib/libgs.so.*.* 2>/dev/null | head -1 || true)"; \\
+    if [ -n "\$lib" ]; then recombine "\$lib" /tmp/libgs && cp /tmp/libgs "\$lib" && ldconfig; fi; \\
+    mkdir -p /usr/src; curl -fsSL "${src_url}" -o /tmp/src.tgz; \\
+    tar xzf /tmp/src.tgz -C /tmp; \\
+    mv "/tmp/\$(tar tzf /tmp/src.tgz | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
+    rm -rf /tmp/dbg /tmp/libgs /tmp/src.tgz; \\
+    /opt/gs/bin/gs --version
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+${labels}
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+    docker build -f "$dockerfile" -t "$image" "$build_context"
+    exit 0
+fi
+
+# method=source
 cat > "$dockerfile" <<EOF
 FROM ${base_image}
 
@@ -195,7 +330,8 @@ RUN curl -fSL "${source_url}" -o /tmp/gs.tar.gz && \\
     tar xzf /tmp/gs.tar.gz -C /tmp && \\
     src="${source_dir}" && \\
     if [ "\$src" = "AUTO" ]; then src="/tmp/\$(tar tzf /tmp/gs.tar.gz | head -1 | cut -d/ -f1)"; fi && \\
-    cd "\$src" && \\
+    mkdir -p /usr/src && mv "\$src" /usr/src/ghostscript && \\
+    cd /usr/src/ghostscript && \\
     if [ "${patch_time_h}" = "true" ]; then find . -name time_.h -exec sed -i '/^struct timeval {$/,/^};$/d' {} +; fi && \\
     if [ "${bootstrap}" = "autogen" ]; then cp /usr/share/automake-*/config.guess /usr/share/automake-*/config.sub . 2>/dev/null || true; fi && \\
     export CFLAGS="-g3 -O0 -fno-omit-frame-pointer" && \\
@@ -207,10 +343,7 @@ RUN curl -fSL "${source_url}" -o /tmp/gs.tar.gz && \\
 
 ENV PATH="/opt/gs/bin:\${PATH}"
 
-LABEL org.opencontainers.image.architecture="amd64" \\
-      net.w0ot.ghostscript.cpu-architecture="x86_64" \\
-      net.w0ot.ghostscript.build-flavor="debug" \\
-      net.w0ot.ghostscript.debug-symbols="true"
+${labels}
 
 WORKDIR /work
 ENTRYPOINT ["gs"]
