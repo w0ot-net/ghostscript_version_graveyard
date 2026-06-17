@@ -224,6 +224,14 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 10.05.1  | 2025 | apt package  | debian:trixie      | Yes                | x86_64        |
 | 10.07.1  | 2026 | Source build | ubuntu:24.04       | Yes                | x86_64        |
 
+## Build notes
+
+The pre-8.70 distro-package images (7.07–8.62) were constructed from archived
+packages with some non-obvious dependency work (era base images, extracted old
+sonames, font requirements). Each one is documented under
+[`doc/build-notes/`](doc/build-notes/README.md): package source, base-image
+choice, dependency closure, gotchas, and the verification probe.
+
 ## Adding a new version
 
 1. Create a Dockerfile under `versions/<version>/Dockerfile`
