@@ -174,6 +174,11 @@ jobs:
             exit 1
           fi
 
+          if ! docker run --rm --entrypoint sh "$debug_image" -c '[ -n "$(ls -A /usr/src/ghostscript 2>/dev/null)" ]'; then
+            echo "::error::$debug_image does not contain Ghostscript source under /usr/src/ghostscript"
+            exit 1
+          fi
+
           echo "::group::Build $combined_image"
           scripts/build-combined-image "$VERSION" "$combined_image"
           echo "::endgroup::"
@@ -216,6 +221,11 @@ jobs:
 
           if ! docker run --rm --entrypoint sh "$combined_image" -c 'readelf -S "$(command -v gs-debug)" | grep -q "\.debug_info"'; then
             echo "::error::$combined_image does not contain a .debug_info section in the gs-debug executable"
+            exit 1
+          fi
+
+          if ! docker run --rm --entrypoint sh "$combined_image" -c '[ -n "$(ls -A /usr/src/ghostscript 2>/dev/null)" ]'; then
+            echo "::error::$combined_image does not contain Ghostscript source under /usr/src/ghostscript"
             exit 1
           fi
 

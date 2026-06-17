@@ -65,11 +65,16 @@ complete in `README.md`.
 
 # TODO: ship Ghostscript source code inside every debug/combined image
 
-We want the corresponding Ghostscript source tree present inside **every**
-`gs-<version>:debug` and `gs-<version>:combined` image, so the debug symbols can
-be matched to source while debugging.
+**Status: DONE (2026-06-17).** Every `gs-<version>:debug` and
+`gs-<version>:combined` image now carries the Ghostscript source under
+`/usr/src/ghostscript`: source builds compile in place there, the distro
+`deb`/`rpm-pm` debug methods unpack the matching upstream tarball, and the
+CentOS `debuginfo` method symlinks the distro `/usr/src/debug` tree. The publish
+workflow enforces a non-empty `/usr/src/ghostscript` for both flavors. The same
+change also switched debug builds to prefer distro debug symbols over source
+(see `doc/build-notes/debug-and-combined.md`).
 
-Current state (not done — inconsistent and partly accidental):
+Original state (now resolved — was inconsistent and partly accidental):
 
 - Source builds 8.01, 8.15, 8.50, 8.54 happen to leave the source in
   `/tmp/gs-gpl-<v>/` only because the cleanup line in `scripts/build-debug-image`

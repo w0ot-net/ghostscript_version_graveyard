@@ -119,23 +119,29 @@ scripts/build-debug-image 9.50
 ./gs-run --debug 9.50 -- --version
 ```
 
-Debug companions are tagged as `gs-<version>:debug` and are built from public upstream Ghostscript source tarballs with `-g3 -O0 -fno-omit-frame-pointer`. They include `gdb`, `binutils`, and an unstripped `gs` executable with a `.debug_info` section.
+Debug companions are tagged as `gs-<version>:debug`. They include `gdb`,
+`binutils`, an unstripped `gs` executable with a `.debug_info` section, and the
+matching Ghostscript source tree under `/usr/src/ghostscript`.
 
-The pre-8.70 distro-package versions (7.07–8.62) are handled specially in
-`scripts/build-debug-image`, because their upstream sources predate the GitHub
-release tags used for the newer versions:
+`scripts/build-debug-image` prefers the distro's own debug symbols and only
+falls back to a source build when no usable gs debug package exists:
 
-- The deb-based versions (8.01, 8.15, 8.50, 8.54, 8.61) are source-built the same
-  way, but from the distro's own orig tarball (or, for 8.61, the ghostpdl GitHub
-  tag) so the debug binary reports the same version as the shipped package.
-- The RPM-based versions (7.07, 8.60, 8.62) have no need to recompile: their
-  `gs-debug` is produced by recombining the stripped distro `gs` (and `libgs.so`)
-  with the matching `ghostscript-debuginfo` package via `eu-unstrip`, yielding an
-  unstripped `gs` with a real `.debug_info` section that matches the exact shipped
-  binary.
+- **Distro debug symbols (preferred).** For distro-package versions, the stripped
+  `gs` (and `libgs.so`) are recombined with the distro debug-symbol package via
+  `eu-unstrip`, so the executables carry a real `.debug_info` section matching the
+  shipped binary. Symbols come from `ghostscript-dbg` / `*-dbgsym` on
+  Debian/Ubuntu, `ghostscript-debuginfo` on Fedora/openSUSE/CentOS.
+- **Source build (fallback).** Where the distro ships no usable gs debug package
+  — the pure-source versions, and distro versions whose debug repo is gone or
+  unusable (Debian jessie's path-style `-dbg`; Fedora 20/21/25 archive `elfutils`
+  breakage; Debian bullseye/bookworm/trixie and Ubuntu plucky, which have no gs
+  dbgsym; Ubuntu jammy/noble, whose ddebs only carries the GA-revision dbgsym, not
+  the installed security point release) — `gs` is compiled from the matching
+  upstream/orig tarball with `-g3 -O0 -fno-omit-frame-pointer`.
 
 Either way the result satisfies the same checks: correct `gs --version`, a
-`.debug_info` section in the `gs` executable, and the architecture/flavor labels.
+`.debug_info` section in the `gs` executable, the source under
+`/usr/src/ghostscript`, and the architecture/flavor labels.
 
 Debug images add these labels:
 
@@ -157,7 +163,8 @@ scripts/build-combined-image 9.50
 Combined images are tagged as `gs-<version>:combined` and contain:
 
 - `gs`: the normal binary from `versions/<version>/Dockerfile`, preserving distro package builds whenever that Dockerfile uses one
-- `gs-debug`: a debug binary installed at `/usr/local/bin/gs-debug`. For most versions this is a source build with `-g3 -O0 -fno-omit-frame-pointer`; for the RPM-based pre-8.70 versions (7.07, 8.60, 8.62) it is the distro binary recombined with its `ghostscript-debuginfo` symbols.
+- `gs-debug`: the debug binary from the companion debug image, installed at `/usr/local/bin/gs-debug` (distro debug symbols where available, otherwise a source build — see Debug Builds above)
+- the Ghostscript source under `/usr/src/ghostscript`, inherited from the debug image
 
 The combined image is assembled from the normal and debug companion images, so `gs-debug` is the same debug build published as `gs-<version>:debug`.
 

@@ -26,10 +26,11 @@ flavors — `latest` (release), `debug`, and `combined`.
   1. Builds `versions/<version>/Dockerfile` → `gs-<version>` and verifies
      `gs --version`, the Docker platform arch (`amd64`), and the arch labels.
   2. Builds the debug image via `scripts/build-debug-image` and verifies version,
-     arch/labels, `build-flavor=debug`, and a `.debug_info` section in `gs`.
+     arch/labels, `build-flavor=debug`, a `.debug_info` section in `gs`, and the
+     source under `/usr/src/ghostscript`.
   3. Builds the combined image via `scripts/build-combined-image` and verifies
-     `gs` and `gs-debug` versions, arch/labels, `build-flavor=combined`, and a
-     `.debug_info` section in `gs-debug`.
+     `gs` and `gs-debug` versions, arch/labels, `build-flavor=combined`, a
+     `.debug_info` section in `gs-debug`, and the source under `/usr/src/ghostscript`.
   4. Pushes `:latest`, `:debug`, and `:combined` to
      `ghcr.io/<owner>/gs-<version>` (each push retried up to 3×).
 - **Auth:** the repository `GITHUB_TOKEN` with `packages: write`; no extra
@@ -55,14 +56,24 @@ the pre-8.70 distro-package versions are in [`build-notes/`](build-notes/README.
 scripts/build-debug-image <version> [image-tag]   # default tag gs-<version>:debug
 ```
 
-Produces an unstripped `gs` with a `.debug_info` section plus `gdb`/`binutils`,
-built `-g3 -O0 -fno-omit-frame-pointer`. Two methods, chosen per version:
+Produces an unstripped `gs` with a `.debug_info` section, `gdb`/`binutils`, and
+the matching source under `/usr/src/ghostscript`. It prefers distro debug
+symbols and falls back to source only when no usable gs debug package exists:
 
-- **Source build** (most versions) — compile from an upstream tarball: a GitHub
-  release tag for the newer versions and 8.61, or the distro orig tarball for the
-  pre-8.63 deb versions (8.01, 8.15, 8.50, 8.54).
-- **Debuginfo recombine** (7.07, 8.60, 8.62) — recombine the stripped distro
-  binary with its `ghostscript-debuginfo` package via `eu-unstrip`.
+- **`deb`** (Debian/Ubuntu, distro symbols) — install `ghostscript-dbg` /
+  `*-dbgsym` and recombine into `gs`/`libgs` with `eu-unstrip`. Used for 9.18,
+  9.22, 9.50.
+- **`rpm-pm`** (Fedora/openSUSE, distro symbols) — fetch the version-matched
+  `ghostscript-debuginfo` from the archive and recombine. Used for 9.26, 9.56.1,
+  10.03.1, 9.52.
+- **`debuginfo`** (CentOS-hosted RPM payloads) — fixed-URL `ghostscript-debuginfo`
+  recombine, because the normal image is an extracted RPM with no rpmdb. Used for
+  7.07, 8.60, 8.62.
+- **`source`** (fallback + pure-source) — compile from the upstream/orig tarball
+  with `-g3 -O0 -fno-omit-frame-pointer`. Used for 8.63/8.64/8.71/9.01/10.03.0/
+  10.07.1, the pre-8.63 deb versions (8.01/8.15/8.50/8.54/8.61), and the distro
+  versions with no usable debug package (9.06, 9.10, 9.14, 9.20, 9.53.3, 9.55.0,
+  10.0.0, 10.02.1, 10.05.0, 10.05.1).
 
 See [`build-notes/debug-and-combined.md`](build-notes/debug-and-combined.md) for
 the per-version specifics. Set `GS_BUILD_JOBS` to control compile parallelism
@@ -102,6 +113,8 @@ Every flavor of every version must satisfy, in both CI and local checks:
   and combined images also carry the `build-flavor` label.
 - The `gs` executable (debug) / `gs-debug` executable (combined) has a
   `.debug_info` section.
+- The debug and combined images carry the Ghostscript source under
+  `/usr/src/ghostscript`.
 
 ## Adding a version
 
