@@ -121,6 +121,22 @@ scripts/build-debug-image 9.50
 
 Debug companions are tagged as `gs-<version>:debug` and are built from public upstream Ghostscript source tarballs with `-g3 -O0 -fno-omit-frame-pointer`. They include `gdb`, `binutils`, and an unstripped `gs` executable with a `.debug_info` section.
 
+The pre-8.70 distro-package versions (7.07–8.62) are handled specially in
+`scripts/build-debug-image`, because their upstream sources predate the GitHub
+release tags used for the newer versions:
+
+- The deb-based versions (8.01, 8.15, 8.50, 8.54, 8.61) are source-built the same
+  way, but from the distro's own orig tarball (or, for 8.61, the ghostpdl GitHub
+  tag) so the debug binary reports the same version as the shipped package.
+- The RPM-based versions (7.07, 8.60, 8.62) have no need to recompile: their
+  `gs-debug` is produced by recombining the stripped distro `gs` (and `libgs.so`)
+  with the matching `ghostscript-debuginfo` package via `eu-unstrip`, yielding an
+  unstripped `gs` with a real `.debug_info` section that matches the exact shipped
+  binary.
+
+Either way the result satisfies the same checks: correct `gs --version`, a
+`.debug_info` section in the `gs` executable, and the architecture/flavor labels.
+
 Debug images add these labels:
 
 - `net.w0ot.ghostscript.build-flavor=debug`
@@ -141,7 +157,7 @@ scripts/build-combined-image 9.50
 Combined images are tagged as `gs-<version>:combined` and contain:
 
 - `gs`: the normal binary from `versions/<version>/Dockerfile`, preserving distro package builds whenever that Dockerfile uses one
-- `gs-debug`: a source-built debug binary installed at `/usr/local/bin/gs-debug` with `-g3 -O0 -fno-omit-frame-pointer`
+- `gs-debug`: a debug binary installed at `/usr/local/bin/gs-debug`. For most versions this is a source build with `-g3 -O0 -fno-omit-frame-pointer`; for the RPM-based pre-8.70 versions (7.07, 8.60, 8.62) it is the distro binary recombined with its `ghostscript-debuginfo` symbols.
 
 The combined image is assembled from the normal and debug companion images, so `gs-debug` is the same debug build published as `gs-<version>:debug`.
 
