@@ -216,6 +216,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 9.56.1   | 2022 | dnf package  | fedora:36          | Yes                | x86_64        |
 | 10.0.0   | 2022 | apt package  | debian:bookworm    | Yes                | x86_64        |
 | 10.01.0  | 2023 | dnf package  | fedora:38          | Yes                | x86_64        |
+| 10.01.1  | 2023 | pacman pkg   | archlinux (2023-03)| Yes                | x86_64        |
 | 10.01.2  | 2023 | dnf package  | fedora:39          | Yes                | x86_64        |
 | 10.02.1  | 2023 | apt package  | ubuntu:24.04       | Yes                | x86_64        |
 | 10.03.0  | 2024 | Source build | ubuntu:24.04       | Yes                | x86_64        |

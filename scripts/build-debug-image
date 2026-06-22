@@ -225,7 +225,7 @@ case "$version" in
             8.62) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/debug/ghostscript-debuginfo-8.62-3.fc9.x86_64.rpm" ;;
         esac
         ;;
-    9.51|10.04.0|10.06.0)
+    9.51|10.01.1|10.04.0|10.06.0)
         # Arch Linux pinned-snapshot versions. Arch ships no downloadable debug
         # packages; symbols are only served by debuginfod. The arch method probes
         # debuginfod.archlinux.org for the gs build-id and recombines if present,
