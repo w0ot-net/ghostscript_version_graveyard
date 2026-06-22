@@ -1,0 +1,13 @@
+FROM openeuler/openeuler:22.03-lts
+
+# openEuler 22.03 LTS ships ghostscript 9.55.0 (the same upstream version this
+# repo also builds from Ubuntu 22.04, but Huawei's independent openEuler toolchain
+# and patch lineage).
+RUN dnf install -y --setopt=install_weak_deps=False binutils gdb ghostscript && \
+    dnf clean all
+
+LABEL org.opencontainers.image.architecture="amd64" \
+      net.w0ot.ghostscript.cpu-architecture="x86_64"
+
+WORKDIR /work
+ENTRYPOINT ["gs"]

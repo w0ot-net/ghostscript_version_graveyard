@@ -241,7 +241,16 @@ case "$version" in
             8.62) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/debug/ghostscript-debuginfo-8.62-3.fc9.x86_64.rpm" ;;
         esac
         ;;
-    9.54.0-centos9|10.02.1-centos10|9.27-rocky8|9.56.1-amazon2023|9.55.0-openeuler22|10.05.1-mageia9|9.54.0-amazon2)
+    9.55.0-openeuler22)
+        # openEuler ships gs debug symbols, but its mirror is too flaky to fetch
+        # them reliably; build gs-debug from the matching source instead (the gs
+        # binary itself is still openEuler's own build).
+        base_image="ubuntu:24.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
+        source_dir="/tmp/ghostscript-${base_version}"
+        bootstrap="configure"
+        ;;
+    9.54.0-centos9|10.02.1-centos10|9.27-rocky8|9.56.1-amazon2023|10.05.1-mageia9|9.54.0-amazon2)
         # Alternate-distro rpm builds that ship debug symbols through their own
         # package manager's debuginfo repo. Install the gs debug symbols in place
         # and recombine from /usr/lib/debug via build-id.
