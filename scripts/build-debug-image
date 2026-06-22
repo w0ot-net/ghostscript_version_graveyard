@@ -50,6 +50,10 @@ src_url=""         # source tarball to unpack into /usr/src/ghostscript
 # rpm-pm method inputs
 dbg_bases=""      # space-separated archive dirs to search for the debuginfo rpms
 
+# pm-debuginfo method inputs (alternate-distro builds that ship debug symbols
+# through their own package manager rather than a fixed archive URL)
+dbg_install_cmd="" # shell that installs elfutils + the gs debug symbols in-place
+
 release_tag="gs${base_version//./}"
 
 case "$version" in
@@ -237,6 +241,22 @@ case "$version" in
             8.62) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/debug/ghostscript-debuginfo-8.62-3.fc9.x86_64.rpm" ;;
         esac
         ;;
+    9.54.0-centos9|10.02.1-centos10|9.27-rocky8|9.56.1-amazon2023|9.55.0-openeuler22|10.05.1-mageia9)
+        # Alternate-distro rpm builds that ship debug symbols through their own
+        # package manager's debuginfo repo. Install the gs debug symbols in place
+        # and recombine from /usr/lib/debug via build-id.
+        method="pm-debuginfo"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
+        case "$version" in
+            9.27-rocky8)
+                # EL8 debuginfo lives in a disabled repo; enable it explicitly.
+                dbg_install_cmd="dnf install -y elfutils file >/dev/null; dnf install -y --enablerepo='*debuginfo*' ghostscript-debuginfo >/dev/null" ;;
+            9.56.1-amazon2023)
+                dbg_install_cmd="dnf install -y elfutils file >/dev/null; dnf debuginfo-install -y ghostscript >/dev/null" ;;
+            *)
+                dbg_install_cmd="dnf install -y elfutils file >/dev/null; dnf install -y --enablerepo='*debuginfo*' ghostscript-debuginfo >/dev/null" ;;
+        esac
+        ;;
     9.51|10.01.1|10.04.0|10.06.0)
         # Arch Linux pinned-snapshot versions. Arch ships no downloadable debug
         # packages; symbols are only served by debuginfod. The arch method probes
@@ -391,6 +411,44 @@ RUN set -eux; \\
     tar xzf /tmp/src.tgz -C /tmp; \\
     mv "/tmp/\$(tar tzf /tmp/src.tgz | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
     rm -rf /tmp/dbg /tmp/libgs /tmp/src.tgz; \\
+    /opt/gs/bin/gs --version
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+${labels}
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+    docker build -f "$dockerfile" -t "$image" "$build_context"
+    exit 0
+fi
+
+if [ "$method" = "pm-debuginfo" ]; then
+    ensure_normal_image
+    cat > "$dockerfile" <<EOF
+FROM gs-${version}
+
+# Install the distro's own gs debug symbols via its package manager, recombine
+# them into the gs/libgs binaries so the executables carry .debug_info, and
+# unpack the matching upstream source under /usr/src/ghostscript.
+RUN set -eux; \\
+    ${dbg_install_cmd}; \\
+    recombine() { \\
+        bid="\$(file "\$1" | sed -n 's/.*BuildID\\[sha1\\]=\\([0-9a-f]*\\).*/\\1/p')"; \\
+        d="/usr/lib/debug/.build-id/\${bid%\${bid#??}}/\${bid#??}.debug"; \\
+        [ -f "\$d" ] || d="/usr/lib/debug\$1.debug"; \\
+        [ -f "\$d" ] || d="\$(find /usr/lib/debug -name "\$(basename "\$1")*.debug" 2>/dev/null | head -1)"; \\
+        eu-unstrip "\$1" "\$d" -o "\$2"; \\
+    }; \\
+    mkdir -p /opt/gs/bin; \\
+    recombine "\$(command -v gs)" /opt/gs/bin/gs; chmod +x /opt/gs/bin/gs; \\
+    lib="\$(ls /usr/lib64/libgs.so.*.* /usr/lib/*/libgs.so.*.* /usr/lib/libgs.so.*.* 2>/dev/null | head -1 || true)"; \\
+    if [ -n "\$lib" ]; then recombine "\$lib" /tmp/libgs && cp /tmp/libgs "\$lib" && ldconfig; fi; \\
+    mkdir -p /usr/src; curl -fsSL "${src_url}" -o /tmp/src.tgz; \\
+    tar xzf /tmp/src.tgz -C /tmp; \\
+    mv "/tmp/\$(tar tzf /tmp/src.tgz | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
+    rm -f /tmp/src.tgz /tmp/libgs; \\
     /opt/gs/bin/gs --version
 
 ENV PATH="/opt/gs/bin:\${PATH}"

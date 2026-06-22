@@ -229,6 +229,19 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 10.07.0  | 2026 | apt package  | debian snapshot    | Yes                | x86_64        |
 | 10.07.1  | 2026 | Source build | ubuntu:24.04       | Yes                | x86_64        |
 
+## Alternate distro builds
+
+The same upstream Ghostscript version, built by a *different* distro — a different
+patch set, compiler, and build flags. The main table above carries one build per
+version number; these are additional builds of versions already listed, kept so a
+document can be compared across independent build environments to surface
+build-sensitive bugs. Their images are named `gs-<version>-<distro>:combined`
+(e.g. `gs-9.54.0-centos9:combined`) and run the same way via `./gs-run 9.54.0-centos9`.
+
+| Image            | gs ver  | Distro family            | Base image                     | Debug symbols      |
+|------------------|---------|--------------------------|--------------------------------|--------------------|
+| 9.54.0-centos9   | 9.54.0  | RHEL (CentOS Stream 9)   | quay.io/centos/centos:stream9  | debuginfo          |
+
 ## Build notes
 
 The pre-8.70 distro-package images (7.07–8.62) were constructed from archived

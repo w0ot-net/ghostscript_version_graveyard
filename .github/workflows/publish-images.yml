@@ -93,8 +93,11 @@ jobs:
           combined_image="$local_image:combined"
           remote_combined_image="$REGISTRY/$owner/$local_image:combined"
 
-          expected_version="$VERSION"
-          case "$VERSION" in
+          # Alternate-distro builds use a gs-<version>-<distro> directory name
+          # (e.g. 9.54.0-centos9); gs itself still reports the bare upstream
+          # version, so strip the -<distro> suffix before comparing.
+          expected_version="${VERSION%%-*}"
+          case "$expected_version" in
             10.0.0)
               expected_version="10.00.0"
               ;;
