@@ -191,6 +191,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 9.18     | 2015 | apt package  | ubuntu:16.04       | Yes                | x86_64        |
 | 9.20     | 2016 | dnf package  | fedora:25          | Yes                | x86_64        |
 | 9.22     | 2017 | apt package  | ubuntu:18.04       | Yes                | x86_64        |
+| 9.25     | 2018 | dnf package  | fedora:29          | Yes                | x86_64        |
 | 9.26     | 2018 | dnf package  | fedora:30          | Yes                | x86_64        |
 | 9.50     | 2019 | apt package  | ubuntu:20.04       | Yes                | x86_64        |
 | 9.52     | 2020 | zypper pkg   | opensuse/leap:15.5 | Yes                | x86_64        |
