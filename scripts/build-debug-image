@@ -120,6 +120,15 @@ case "$version" in
         deb_dbg_pkgs="ghostscript-dbg"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
         ;;
+    9.27)
+        # Debian buster: ghostscript-dbg from archive.debian.org (buster is EOL,
+        # so override the expired Valid-Until check). Buster is the last Debian
+        # release with a real ghostscript-dbg package.
+        method="deb"
+        deb_update_opts="-o Acquire::Check-Valid-Until=false"
+        deb_dbg_pkgs="ghostscript-dbg"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
     9.26)
         method="rpm-pm"
         dbg_bases="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/30/Everything/x86_64/debug/tree/Packages/g"
