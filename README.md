@@ -244,6 +244,7 @@ build-sensitive bugs. Their images are named `gs-<version>-<distro>:combined`
 | 10.02.1-centos10 | 10.02.1 | RHEL (CentOS Stream 10)  | quay.io/centos/centos:stream10 | debuginfo          |
 | 9.27-rocky8      | 9.27    | RHEL (Rocky Linux 8)     | rockylinux/rockylinux:8        | debuginfo          |
 | 9.56.1-amazon2023| 9.56.1  | Amazon Linux 2023        | amazonlinux:2023               | debuginfo          |
+| 9.54.0-amazon2   | 9.54.0  | Amazon Linux 2           | amazonlinux:2                  | debuginfo          |
 
 ## Build notes
 

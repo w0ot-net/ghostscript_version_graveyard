@@ -241,13 +241,16 @@ case "$version" in
             8.62) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/debug/ghostscript-debuginfo-8.62-3.fc9.x86_64.rpm" ;;
         esac
         ;;
-    9.54.0-centos9|10.02.1-centos10|9.27-rocky8|9.56.1-amazon2023|9.55.0-openeuler22|10.05.1-mageia9)
+    9.54.0-centos9|10.02.1-centos10|9.27-rocky8|9.56.1-amazon2023|9.55.0-openeuler22|10.05.1-mageia9|9.54.0-amazon2)
         # Alternate-distro rpm builds that ship debug symbols through their own
         # package manager's debuginfo repo. Install the gs debug symbols in place
         # and recombine from /usr/lib/debug via build-id.
         method="pm-debuginfo"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         case "$version" in
+            9.54.0-amazon2)
+                # Amazon Linux 2 is yum-based; enable the disabled debuginfo repo.
+                dbg_install_cmd="yum install -y elfutils file tar gzip >/dev/null; yum install -y --enablerepo='*debuginfo*' ghostscript-debuginfo >/dev/null" ;;
             *)
                 # debuginfo lives in a disabled *-debuginfo repo; enable it.
                 # (tar/gzip are not preinstalled on minimal images like Amazon Linux.)
