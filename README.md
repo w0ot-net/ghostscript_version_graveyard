@@ -188,6 +188,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 9.06     | 2012 | apt package  | debian:jessie      | No                 | x86_64        |
 | 9.10     | 2013 | yum package  | fedora:20          | Yes                | x86_64        |
 | 9.14     | 2014 | yum package  | fedora:21          | Yes                | x86_64        |
+| 9.16     | 2015 | dnf package  | fedora:22          | Yes                | x86_64        |
 | 9.18     | 2015 | apt package  | ubuntu:16.04       | Yes                | x86_64        |
 | 9.20     | 2016 | dnf package  | fedora:25          | Yes                | x86_64        |
 | 9.22     | 2017 | apt package  | ubuntu:18.04       | Yes                | x86_64        |
