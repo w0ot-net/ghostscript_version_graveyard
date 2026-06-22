@@ -40,6 +40,10 @@ extra_apt=""
 debuginfo_url=""
 libgs_version=""
 
+# srpm-src method input (a distro SRPM to unpack the source from when no debug
+# symbols exist for the version)
+srpm_url=""
+
 # deb method inputs
 deb_dbg_pkgs=""    # debug-symbol packages to install
 deb_dbg_repo=""    # optional extra apt source lines (e.g. ddebs), newline-separated
@@ -230,6 +234,13 @@ case "$version" in
         method="rpm-pm"
         dbg_bases="http://download.opensuse.org/debug/distribution/leap/15.0/repo/oss/x86_64"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    7.05)
+        # gs 7.05 has no CentOS 3 debuginfo and its 2002 build system is not
+        # reproducible on a modern toolchain, so gs-debug is the stripped distro
+        # binary and the source is unpacked from the distro SRPM for reference.
+        method="srpm-src"
+        srpm_url="https://vault.centos.org/3.9/updates/SRPMS/ghostscript-7.05-32.1.20.src.rpm"
         ;;
     7.07|8.60|8.62)
         # CentOS-hosted extracted-RPM payloads (no rpmdb): fixed debuginfo URL.
@@ -425,6 +436,39 @@ RUN set -eux; \\
 ENV PATH="/opt/gs/bin:\${PATH}"
 
 ${labels}
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+    docker build -f "$dockerfile" -t "$image" "$build_context"
+    exit 0
+fi
+
+if [ "$method" = "srpm-src" ]; then
+    ensure_normal_image
+    cat > "$dockerfile" <<EOF
+FROM gs-${version}
+
+# No debug symbols exist for this version, so gs-debug is the stripped distro gs;
+# the matching upstream source is unpacked from the distro SRPM into
+# /usr/src/ghostscript for reference.
+RUN set -eux; \\
+    yum -y install bzip2 >/dev/null && yum clean all; \\
+    mkdir -p /opt/gs/bin; cp -a "\$(readlink -f "\$(command -v gs)")" /opt/gs/bin/gs; \\
+    cd /tmp; curl -fsSL -o gs.src.rpm "${srpm_url}"; \\
+    rpm2cpio gs.src.rpm | cpio -idm --quiet; \\
+    tarball="\$(ls ghostscript-${base_version}.tar.* | head -1)"; \\
+    mkdir -p /usr/src; tar xf "\$tarball" -C /tmp; \\
+    mv "/tmp/\$(tar tf "\$tarball" | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
+    rm -f /tmp/gs.src.rpm /tmp/*.tar.* /tmp/*.tgz /tmp/*.patch; \\
+    /opt/gs/bin/gs --version
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+LABEL org.opencontainers.image.architecture="amd64" \\
+      net.w0ot.ghostscript.cpu-architecture="x86_64" \\
+      net.w0ot.ghostscript.build-flavor="debug" \\
+      net.w0ot.ghostscript.debug-symbols="false"
 
 WORKDIR /work
 ENTRYPOINT ["gs"]

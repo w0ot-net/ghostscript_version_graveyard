@@ -165,7 +165,7 @@ it calls, the `gs-run` wrapper, and the verification contract — see
 
 The PostScript integer width column describes the behavior of the Docker images in this repository, not just the upstream Ghostscript release number. The local builds are not monotonic by version:
 
-- Every pre-8.70 release in this repository (7.07, 8.01, 8.15, 8.50, 8.54, 8.60, 8.61, 8.62, 8.63, and 8.64) supports 64-bit PostScript integer objects. That era stored PostScript integer objects in a C `long`, which is 64-bit on x86_64/LP64, so values outside the signed 32-bit range stay `integertype`. This was confirmed by probing each image, not assumed from the release number.
+- Every pre-8.70 release in this repository (7.05, 7.07, 8.01, 8.15, 8.50, 8.54, 8.60, 8.61, 8.62, 8.63, and 8.64) supports 64-bit PostScript integer objects. That era stored PostScript integer objects in a C `long`, which is 64-bit on x86_64/LP64, so values outside the signed 32-bit range stay `integertype`. This was confirmed by probing each image, not assumed from the release number.
 - 8.71, 9.01, and 9.06 are 32-bit-only for PostScript integers in these images; values outside the 32-bit signed range are represented as `realtype`. Ghostscript made integer storage explicitly 32-bit starting at 8.70.
 - 9.10 and later support 64-bit PostScript integer objects.
 
@@ -177,6 +177,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 
 | Version  | Year | Source       | Base Image         | 64-bit PS integers | `gs` CPU arch |
 |----------|------|--------------|--------------------|--------------------|---------------|
+| 7.05     | 2002 | yum package  | centos:6           | Yes                | x86_64        |
 | 7.07     | 2003 | yum package  | centos:6           | Yes                | x86_64        |
 | 8.01     | 2004 | apt package  | debian/eol:etch    | Yes                | x86_64        |
 | 8.15     | 2005 | apt package  | debian/eol:etch    | Yes                | x86_64        |
