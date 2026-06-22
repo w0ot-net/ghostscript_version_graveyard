@@ -476,6 +476,7 @@ RUN set -eux; \\
     cp -a /tmp/ghostscript-${base_version}/bin/gs /opt/gs/bin/gs; \\
     mkdir -p /usr/src; cp -a /tmp/ghostscript-${base_version} /usr/src/ghostscript; \\
     rm -f /tmp/gs.src.rpm; \\
+    rm -rf /usr/share/ghostscript; \\
     readelf -S /opt/gs/bin/gs | grep -q debug_info; \\
     /opt/gs/bin/gs --version
 
