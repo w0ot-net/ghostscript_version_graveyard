@@ -131,6 +131,12 @@ case "$version" in
         dbg_bases="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/29/Everything/x86_64/debug/tree/Packages/g"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
         ;;
+    9.53.1)
+        # Fedora 33 GA ghostscript-debuginfo (updates pocket is disabled to keep 9.53.1).
+        method="rpm-pm"
+        dbg_bases="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/33/Everything/x86_64/debug/tree/Packages/g"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
     9.56.1)
         # Installed version comes from fedora 36 updates, so search updates first.
         method="rpm-pm"
