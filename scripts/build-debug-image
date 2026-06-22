@@ -251,9 +251,9 @@ case "$version" in
         bootstrap="configure"
         ;;
     9.54.0-centos9|10.02.1-centos10|9.27-rocky8|9.56.1-amazon2023|10.05.1-mageia9|9.54.0-amazon2)
-        # Alternate-distro rpm builds that ship debug symbols through their own
-        # package manager's debuginfo repo. Install the gs debug symbols in place
-        # and recombine from /usr/lib/debug via build-id.
+        # Alternate-distro builds that ship debug symbols through their own package
+        # manager's debuginfo repo. Install the gs debug symbols in place and
+        # recombine from /usr/lib/debug via build-id.
         method="pm-debuginfo"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         case "$version" in
