@@ -242,6 +242,7 @@ build-sensitive bugs. Their images are named `gs-<version>-<distro>:combined`
 |------------------|---------|--------------------------|--------------------------------|--------------------|
 | 9.54.0-centos9   | 9.54.0  | RHEL (CentOS Stream 9)   | quay.io/centos/centos:stream9  | debuginfo          |
 | 10.02.1-centos10 | 10.02.1 | RHEL (CentOS Stream 10)  | quay.io/centos/centos:stream10 | debuginfo          |
+| 9.27-rocky8      | 9.27    | RHEL (Rocky Linux 8)     | rockylinux/rockylinux:8        | debuginfo          |
 
 ## Build notes
 
