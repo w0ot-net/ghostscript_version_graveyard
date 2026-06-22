@@ -246,6 +246,7 @@ build-sensitive bugs. Their images are named `gs-<version>-<distro>:combined`
 | 9.56.1-amazon2023| 9.56.1  | Amazon Linux 2023        | amazonlinux:2023               | debuginfo          |
 | 9.54.0-amazon2   | 9.54.0  | Amazon Linux 2           | amazonlinux:2                  | debuginfo          |
 | 9.55.0-openeuler22| 9.55.0 | openEuler 22.03 LTS      | openeuler/openeuler:22.03-lts  | source build       |
+| 10.05.1-mageia9  | 10.05.1 | Mageia 9 (Mandriva)      | mageia:9                       | debuginfo          |
 
 ## Build notes
 
