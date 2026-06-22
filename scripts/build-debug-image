@@ -564,8 +564,36 @@ EOF
         docker build -f "$dockerfile" -t "$image" "$build_context"
         exit 0
     fi
-    echo "debuginfod has no symbols for gs build-id ${arch_bid:-unknown}; building gs-debug from source." >&2
-    method="source"
+    echo "debuginfod has no symbols for gs build-id ${arch_bid:-unknown}; building gs-debug from source on Arch." >&2
+    # Build gs-debug from the matching source ON the Arch image itself (not a
+    # foreign base), so the debug binary and the whole combined image's system
+    # glibc + ld.so stay Arch-native — the gs/libgs under test then run against
+    # Arch's glibc, not the harness base distro's.
+    cat > "$dockerfile" <<EOF
+FROM gs-${version}
+
+RUN set -eux; \\
+    pacman -Sy --noconfirm --needed --overwrite '*' base-devel curl libxext libxt libx11; \\
+    mkdir -p /usr/src; cd /tmp; curl -fsSL "${src_url}" -o src.tgz; \\
+    tar xzf src.tgz; mv "ghostscript-${base_version}" /usr/src/ghostscript; \\
+    cd /usr/src/ghostscript; \\
+    export CFLAGS="-g3 -O0 -fno-omit-frame-pointer" CXXFLAGS="-g3 -O0 -fno-omit-frame-pointer"; \\
+    ./configure --prefix=/opt/gs >/dev/null; \\
+    make -j${build_jobs} >/dev/null; \\
+    make install >/dev/null; \\
+    rm -f /tmp/src.tgz; \\
+    readelf -S /opt/gs/bin/gs | grep -q debug_info; \\
+    /opt/gs/bin/gs --version
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+${labels}
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+    docker build -f "$dockerfile" -t "$image" "$build_context"
+    exit 0
 fi
 
 # method=source
