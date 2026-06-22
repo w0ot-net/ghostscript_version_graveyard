@@ -198,6 +198,18 @@ case "$version" in
             8.62) debuginfo_url="https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/9/Everything/x86_64/debug/ghostscript-debuginfo-8.62-3.fc9.x86_64.rpm" ;;
         esac
         ;;
+    9.51|10.04.0|10.06.0)
+        # Arch Linux pinned-snapshot versions. Arch ships no downloadable debug
+        # packages; symbols are only served by debuginfod. The arch method probes
+        # debuginfod.archlinux.org for the gs build-id and recombines if present,
+        # otherwise it falls back to the source build configured below.
+        method="arch"
+        base_image="ubuntu:24.04"
+        source_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        source_dir="/tmp/ghostscript-${version}"
+        bootstrap="configure"
+        src_url="$source_url"
+        ;;
     *)
         echo "Unknown Ghostscript version for debug build: $version" >&2
         exit 1
@@ -351,6 +363,44 @@ ENTRYPOINT ["gs"]
 EOF
     docker build -f "$dockerfile" -t "$image" "$build_context"
     exit 0
+fi
+
+if [ "$method" = "arch" ]; then
+    ensure_normal_image
+    # Probe debuginfod for the installed gs build-id; recombine if served.
+    arch_bid="$(docker run --rm --entrypoint sh "gs-${version}" -c 'file -L "$(command -v gs)" 2>/dev/null | sed -n "s/.*BuildID\[sha1\]=\([0-9a-f]*\).*/\1/p"')"
+    if [ -n "$arch_bid" ] && curl -fsI "https://debuginfod.archlinux.org/buildid/${arch_bid}/debuginfo" >/dev/null 2>&1; then
+        echo "debuginfod serves symbols for gs build-id ${arch_bid}; recombining." >&2
+        cat > "$dockerfile" <<EOF
+FROM gs-${version}
+
+# Arch ships no debug packages, but debuginfod.archlinux.org serves the detached
+# symbols by build-id. Fetch them and recombine into gs so the executable carries
+# .debug_info, and keep the matching upstream source under /usr/src/ghostscript.
+RUN set -eux; \\
+    pacman -Sy --noconfirm --needed --overwrite '*' elfutils curl file tar gzip; \\
+    bid="\$(file -L "\$(command -v gs)" | sed -n 's/.*BuildID\\[sha1\\]=\\([0-9a-f]*\\).*/\\1/p')"; \\
+    mkdir -p /opt/gs/bin; \\
+    curl -fsSL "https://debuginfod.archlinux.org/buildid/\${bid}/debuginfo" -o /tmp/gs.debug; \\
+    eu-unstrip "\$(command -v gs)" /tmp/gs.debug -o /opt/gs/bin/gs; chmod +x /opt/gs/bin/gs; \\
+    mkdir -p /usr/src; curl -fsSL "${src_url}" -o /tmp/src.tgz; \\
+    tar xzf /tmp/src.tgz -C /tmp; \\
+    mv "/tmp/\$(tar tzf /tmp/src.tgz | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
+    rm -f /tmp/gs.debug /tmp/src.tgz; \\
+    /opt/gs/bin/gs --version
+
+ENV PATH="/opt/gs/bin:\${PATH}"
+
+${labels}
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
+EOF
+        docker build -f "$dockerfile" -t "$image" "$build_context"
+        exit 0
+    fi
+    echo "debuginfod has no symbols for gs build-id ${arch_bid:-unknown}; building gs-debug from source." >&2
+    method="source"
 fi
 
 # method=source
