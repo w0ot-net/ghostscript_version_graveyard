@@ -128,6 +128,14 @@ case "$version" in
         deb_dbg_pkgs="ghostscript-dbg"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
+    9.56.0)
+        # Debian unstable snapshot; by 2022 the symbols are an automatic -dbgsym
+        # in the separate debian-debug archive (sid-debug suite).
+        method="deb"
+        deb_dbg_repo="deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-debug/20220330T151636Z/ sid-debug main"
+        deb_dbg_pkgs="ghostscript-dbgsym"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
+        ;;
     9.18)
         # Ubuntu xenial: ghostscript-dbg in main; elfutils lives in universe.
         method="deb"
