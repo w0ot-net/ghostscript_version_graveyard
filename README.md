@@ -206,6 +206,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 9.50     | 2019 | apt package  | ubuntu:20.04       | Yes                | x86_64        |
 | 9.51     | 2020 | pacman pkg   | archlinux (2020-03)| Yes                | x86_64        |
 | 9.52     | 2020 | zypper pkg   | opensuse/leap:15.5 | Yes                | x86_64        |
+| 9.53.0   | 2020 | apt package  | debian snapshot    | Yes                | x86_64        |
 | 9.53.1   | 2020 | dnf package  | fedora:33          | Yes                | x86_64        |
 | 9.53.3   | 2020 | apt package  | debian:bullseye    | Yes                | x86_64        |
 | 9.54.0   | 2021 | dnf package  | fedora:35          | Yes                | x86_64        |

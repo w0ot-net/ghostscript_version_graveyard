@@ -9,6 +9,11 @@ fi
 version="$1"
 image="${2:-gs-${version}:debug}"
 
+# Alternate-distro builds use a <version>-<distro> directory name (e.g.
+# 9.54.0-centos9). The upstream Ghostscript version (used for source tarballs and
+# release tags) is the part before the first dash.
+base_version="${version%%-*}"
+
 # Debug build method, in order of preference (distro debug symbols first, source
 # only as a fallback):
 #   deb        - Debian/Ubuntu: install the distro debug symbols (ghostscript-dbg
@@ -45,7 +50,7 @@ src_url=""         # source tarball to unpack into /usr/src/ghostscript
 # rpm-pm method inputs
 dbg_bases=""      # space-separated archive dirs to search for the debuginfo rpms
 
-release_tag="gs${version//./}"
+release_tag="gs${base_version//./}"
 
 case "$version" in
     8.63|8.64|8.71|9.01|9.06|9.10|9.14|9.15|9.16)
@@ -115,6 +120,13 @@ case "$version" in
         deb_update_opts="-o Acquire::Check-Valid-Until=false"
         deb_dbg_pkgs="ghostscript-dbg"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
+    9.53.0|9.53.2)
+        # Debian unstable snapshot (snapshot.debian.org sources are baked into the
+        # normal image); the matching ghostscript-dbg lives in the same snapshot.
+        method="deb"
+        deb_dbg_pkgs="ghostscript-dbg"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
     9.18)
         # Ubuntu xenial: ghostscript-dbg in main; elfutils lives in universe.
