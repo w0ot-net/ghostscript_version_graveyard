@@ -226,6 +226,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 10.05.0  | 2025 | apt package  | ubuntu:25.04       | Yes                | x86_64        |
 | 10.05.1  | 2025 | apt package  | debian:trixie      | Yes                | x86_64        |
 | 10.06.0  | 2025 | pacman pkg   | archlinux (2025-09)| Yes                | x86_64        |
+| 10.07.0  | 2026 | apt package  | debian snapshot    | Yes                | x86_64        |
 | 10.07.1  | 2026 | Source build | ubuntu:24.04       | Yes                | x86_64        |
 
 ## Build notes

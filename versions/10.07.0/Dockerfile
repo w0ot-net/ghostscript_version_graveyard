@@ -1,0 +1,19 @@
+FROM debian:trixie
+
+# gs 10.07.0 was only briefly in Debian unstable before 10.07.1. Pin apt to the
+# snapshot.debian.org timestamp that carried it. trixie uses the deb822
+# debian.sources, which would otherwise mask the pinned snapshot, so remove it.
+RUN rm -f /etc/apt/sources.list.d/debian.sources && \
+    printf 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260323T083223Z/ sid main\n' \
+        > /etc/apt/sources.list && \
+    printf 'Acquire::Check-Valid-Until "false";\nAcquire::Retries "3";\n' \
+        > /etc/apt/apt.conf.d/99snapshot && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ghostscript && \
+    rm -rf /var/lib/apt/lists/*
+
+LABEL org.opencontainers.image.architecture="amd64" \
+      net.w0ot.ghostscript.cpu-architecture="x86_64"
+
+WORKDIR /work
+ENTRYPOINT ["gs"]
