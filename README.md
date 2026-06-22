@@ -210,6 +210,7 @@ The repository does not currently include 9.07, 9.08, or 9.09.
 | 10.02.1  | 2023 | apt package  | ubuntu:24.04       | Yes                | x86_64        |
 | 10.03.0  | 2024 | Source build | ubuntu:24.04       | Yes                | x86_64        |
 | 10.03.1  | 2024 | dnf package  | fedora:41          | Yes                | x86_64        |
+| 10.04.0  | 2024 | pacman pkg   | archlinux (2024-09)| Yes                | x86_64        |
 | 10.05.0  | 2025 | apt package  | ubuntu:25.04       | Yes                | x86_64        |
 | 10.05.1  | 2025 | apt package  | debian:trixie      | Yes                | x86_64        |
 | 10.06.0  | 2025 | pacman pkg   | archlinux (2025-09)| Yes                | x86_64        |
