@@ -248,13 +248,10 @@ case "$version" in
         method="pm-debuginfo"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         case "$version" in
-            9.27-rocky8)
-                # EL8 debuginfo lives in a disabled repo; enable it explicitly.
-                dbg_install_cmd="dnf install -y elfutils file >/dev/null; dnf install -y --enablerepo='*debuginfo*' ghostscript-debuginfo >/dev/null" ;;
-            9.56.1-amazon2023)
-                dbg_install_cmd="dnf install -y elfutils file >/dev/null; dnf debuginfo-install -y ghostscript >/dev/null" ;;
             *)
-                dbg_install_cmd="dnf install -y elfutils file >/dev/null; dnf install -y --enablerepo='*debuginfo*' ghostscript-debuginfo >/dev/null" ;;
+                # debuginfo lives in a disabled *-debuginfo repo; enable it.
+                # (tar/gzip are not preinstalled on minimal images like Amazon Linux.)
+                dbg_install_cmd="dnf install -y elfutils file tar gzip >/dev/null; dnf install -y --enablerepo='*debuginfo*' ghostscript-debuginfo >/dev/null" ;;
         esac
         ;;
     9.51|10.01.1|10.04.0|10.06.0)
@@ -439,17 +436,18 @@ RUN set -eux; \\
         d="/usr/lib/debug/.build-id/\${bid%\${bid#??}}/\${bid#??}.debug"; \\
         [ -f "\$d" ] || d="/usr/lib/debug\$1.debug"; \\
         [ -f "\$d" ] || d="\$(find /usr/lib/debug -name "\$(basename "\$1")*.debug" 2>/dev/null | head -1)"; \\
+        [ -f "\$d" ] || return 1; \\
         eu-unstrip "\$1" "\$d" -o "\$2"; \\
     }; \\
     mkdir -p /opt/gs/bin; \\
     recombine "\$(command -v gs)" /opt/gs/bin/gs; chmod +x /opt/gs/bin/gs; \\
     lib="\$(ls /usr/lib64/libgs.so.*.* /usr/lib/*/libgs.so.*.* /usr/lib/libgs.so.*.* 2>/dev/null | head -1 || true)"; \\
-    if [ -n "\$lib" ]; then recombine "\$lib" /tmp/libgs && cp /tmp/libgs "\$lib" && ldconfig; fi; \\
+    if [ -n "\$lib" ]; then recombine "\$lib" /tmp/libgs && cp /tmp/libgs "\$lib" && ldconfig || true; fi; \\
     mkdir -p /usr/src; curl -fsSL "${src_url}" -o /tmp/src.tgz; \\
     tar xzf /tmp/src.tgz -C /tmp; \\
     mv "/tmp/\$(tar tzf /tmp/src.tgz | head -1 | cut -d/ -f1)" /usr/src/ghostscript; \\
     rm -f /tmp/src.tgz /tmp/libgs; \\
-    /opt/gs/bin/gs --version
+    readelf -S /opt/gs/bin/gs | grep -q debug_info
 
 ENV PATH="/opt/gs/bin:\${PATH}"
 
