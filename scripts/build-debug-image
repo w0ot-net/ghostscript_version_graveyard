@@ -50,6 +50,10 @@ deb_dbg_repo=""    # optional extra apt source lines (e.g. ddebs), newline-separ
 deb_update_opts="" # extra apt-get update options (e.g. expired-archive override)
 deb_install_opts="" # extra apt-get install options (e.g. --force-yes)
 src_url=""         # source tarball to unpack into /usr/src/ghostscript
+# host tools the debug build installs alongside the debug-symbol package; set to
+# empty for snapshot images, where these are installed from the base distro
+# instead (snapshot elfutils/binutils clash with the base gdb's shared libs).
+deb_tools="elfutils binutils file curl ca-certificates"
 
 # rpm-pm method inputs
 dbg_bases=""      # space-separated archive dirs to search for the debuginfo rpms
@@ -132,8 +136,10 @@ case "$version" in
     9.53.0|9.53.2)
         # Debian unstable snapshot (snapshot.debian.org sources are baked into the
         # normal image); the matching ghostscript-dbg lives in the same snapshot.
+        # Host tools come from the base distro (see deb_tools), not the snapshot.
         method="deb"
         deb_dbg_pkgs="ghostscript-dbg"
+        deb_tools=""
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
     9.56.0)
@@ -142,18 +148,21 @@ case "$version" in
         method="deb"
         deb_dbg_repo="deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-debug/20220330T151636Z/ sid-debug main"
         deb_dbg_pkgs="ghostscript-dbgsym"
+        deb_tools=""
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
     10.02.0)
         method="deb"
         deb_dbg_repo="deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-debug/20230914T032711Z/ sid-debug main"
         deb_dbg_pkgs="ghostscript-dbgsym"
+        deb_tools=""
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
     10.07.0)
         method="deb"
         deb_dbg_repo="deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-debug/20260323T083254Z/ sid-debug main"
         deb_dbg_pkgs="ghostscript-dbgsym"
+        deb_tools=""
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
     9.18)
@@ -363,7 +372,7 @@ RUN set -eux; \\
     ${repo_cmd}; \\
     apt-get ${deb_update_opts} update; \\
     apt-get install -y ${deb_install_opts} --no-install-recommends ${deb_dbg_pkgs} \\
-        elfutils binutils file curl ca-certificates; \\
+        ${deb_tools}; \\
     recombine() { \\
         bid="\$(file "\$1" | sed -n 's/.*BuildID\\[sha1\\]=\\([0-9a-f]*\\).*/\\1/p')"; \\
         d="/usr/lib/debug/.build-id/\${bid%\${bid#??}}/\${bid#??}.debug"; \\
