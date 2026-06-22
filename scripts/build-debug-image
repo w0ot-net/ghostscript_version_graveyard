@@ -107,6 +107,14 @@ case "$version" in
         source_dir="/tmp/ghostscript-${version}"
         bootstrap="configure"
         ;;
+    9.19|9.21)
+        # Ubuntu zesty/artful (EOL): ghostscript-dbg in main, elfutils in
+        # universe, both from old-releases.ubuntu.com (expired Valid-Until).
+        method="deb"
+        deb_update_opts="-o Acquire::Check-Valid-Until=false"
+        deb_dbg_pkgs="ghostscript-dbg"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${version}.tar.gz"
+        ;;
     9.18)
         # Ubuntu xenial: ghostscript-dbg in main; elfutils lives in universe.
         method="deb"
