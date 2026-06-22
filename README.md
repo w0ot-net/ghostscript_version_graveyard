@@ -132,13 +132,17 @@ back to a source build when no usable gs debug package exists:
   `gs` (and `libgs.so`) are recombined with the distro debug-symbol package via
   `eu-unstrip`, so the executable carries a real `.debug_info` section matching the
   shipped binary. Symbols come from `ghostscript-dbg` / `*-dbgsym` on
-  Debian/Ubuntu, `ghostscript-debuginfo` on Fedora/openSUSE/CentOS.
+  Debian/Ubuntu, `ghostscript-debuginfo` on Fedora/openSUSE/CentOS. For the Arch
+  versions there is no downloadable debug package, so the build probes
+  `debuginfod.archlinux.org` for the gs build-id and recombines if it is served.
 - **Source build (fallback).** Where the distro ships no usable gs debug package
   — the pure-source versions, and distro versions whose debug repo is gone or
-  unusable (Debian jessie's path-style `-dbg`; Fedora 20/21/25 archive `elfutils`
-  breakage; Debian bullseye/bookworm/trixie and Ubuntu plucky, which have no gs
-  dbgsym; Ubuntu jammy/noble, whose ddebs only carries the GA-revision dbgsym, not
-  the installed security point release) — `gs` is compiled from the matching
+  unusable (Debian jessie's path-style `-dbg`; Fedora 20/21/22/25 archive
+  `elfutils` breakage; Debian bullseye/bookworm/trixie and Ubuntu plucky, which
+  have no gs dbgsym; Ubuntu jammy/noble, whose ddebs only carries the GA-revision
+  dbgsym, not the installed security point release; the Ubuntu vivid 9.15 image,
+  whose `gs` is unpacked debs on a newer base; and the Arch versions, whose
+  build-ids debuginfod has already pruned) — `gs` is compiled from the matching
   upstream/orig tarball with `-g3 -O0 -fno-omit-frame-pointer`.
 
 The build scripts default to at most two parallel compiler jobs (legacy autoconf
