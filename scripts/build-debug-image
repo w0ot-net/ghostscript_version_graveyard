@@ -136,6 +136,12 @@ case "$version" in
         deb_dbg_pkgs="ghostscript-dbgsym"
         src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
         ;;
+    10.02.0)
+        method="deb"
+        deb_dbg_repo="deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-debug/20230914T032711Z/ sid-debug main"
+        deb_dbg_pkgs="ghostscript-dbgsym"
+        src_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${release_tag}/ghostscript-${base_version}.tar.gz"
+        ;;
     9.18)
         # Ubuntu xenial: ghostscript-dbg in main; elfutils lives in universe.
         method="deb"
